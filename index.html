@@ -1,0 +1,2766 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ChordFlow — 安靜琴房｜吉他轉調與指法簡化工作站</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-deep: #12100e;
+      --bg-warm: #1a1713;
+      --bg-card: rgba(26, 23, 19, 0.78);
+      --bg-recessed: rgba(16, 14, 11, 0.72);
+      --text-main: #ece4d6;
+      --text-muted: #a69c8e;
+      --text-dim: #756c60;
+      --brass: #d4a24c;
+      --brass-light: #e6bc70;
+      --brass-dim: rgba(212, 162, 76, 0.16);
+      --sage: #6d9b87;
+      --sage-dim: rgba(109, 155, 135, 0.16);
+      --border-hairline: rgba(236, 228, 214, 0.09);
+      --border-brass: rgba(212, 162, 76, 0.34);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', 'Noto Sans TC', sans-serif;
+      background-color: var(--bg-deep);
+      background-image:
+        radial-gradient(ellipse at 50% 0%, rgba(212, 162, 76, 0.07) 0%, transparent 65%),
+        radial-gradient(ellipse at 85% 90%, rgba(109, 155, 135, 0.04) 0%, transparent 50%),
+        repeating-linear-gradient(
+          90deg,
+          rgba(255, 245, 230, 0.008) 0px,
+          rgba(255, 245, 230, 0.008) 2px,
+          transparent 2px,
+          transparent 9px
+        ),
+        linear-gradient(180deg, #12100e 0%, #171410 50%, #12100e 100%);
+      color: var(--text-main);
+      overflow-x: hidden;
+    }
+
+    .serif-display {
+      font-family: 'Fraunces', 'Cormorant Garamond', 'Noto Sans TC', serif;
+      letter-spacing: 0.01em;
+    }
+
+    .mono-chord {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Studio Cards & Hairline Borders */
+    .studio-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-hairline);
+      border-radius: 14px;
+      box-shadow: 0 12px 32px -12px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 250, 240, 0.03);
+      backdrop-filter: blur(8px);
+    }
+
+    .studio-recessed {
+      background: var(--bg-recessed);
+      border: 1px solid rgba(236, 228, 214, 0.06);
+      border-radius: 10px;
+    }
+
+    /* Interactive Controls & Accessible Focus */
+    .studio-btn {
+      position: relative;
+      min-height: 40px;
+      transition: background-color 200ms ease-out, border-color 200ms ease-out, color 200ms ease-out, transform 180ms ease-out, box-shadow 200ms ease-out;
+    }
+
+    .studio-btn:focus-visible,
+    select:focus-visible,
+    input:focus-visible,
+    textarea:focus-visible {
+      outline: 2px solid var(--brass);
+      outline-offset: 2px;
+    }
+
+    .btn-string-wrap {
+      position: absolute;
+      left: 8px;
+      right: 8px;
+      bottom: 2px;
+      height: 8px;
+      pointer-events: none;
+      overflow: visible;
+    }
+
+    /* Fretboard Divider with Inlay Dots */
+    .fret-divider {
+      position: relative;
+      height: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      margin: 4px 0;
+    }
+    .fret-divider::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent 0%, rgba(212, 162, 76, 0.24) 20%, rgba(212, 162, 76, 0.24) 80%, transparent 100%);
+    }
+    .inlay-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 9999px;
+      background: rgba(236, 228, 214, 0.22);
+      border: 1px solid rgba(212, 162, 76, 0.35);
+      z-index: 1;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #14120f;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #38322b;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #52493f;
+    }
+
+    /* Over-lyric chord layout */
+    .chord-lyric-pair {
+      display: inline-flex;
+      flex-direction: column;
+      vertical-align: bottom;
+      margin-right: 4px;
+      margin-bottom: 14px;
+      line-height: 1.5;
+    }
+    .chord-token {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      min-height: 1.65em;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 1px 7px;
+      border-radius: 6px;
+      margin-bottom: 3px;
+      transition: background-color 180ms ease-out, border-color 180ms ease-out, color 180ms ease-out, transform 180ms ease-out;
+      user-select: none;
+      width: fit-content;
+    }
+    .chord-token:hover {
+      transform: translateY(-1px);
+    }
+    .lyric-token {
+      white-space: pre-wrap;
+      min-height: 1.5em;
+      color: var(--text-main);
+      letter-spacing: 0.02em;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-[#d4a24c]/25 selection:text-[#ece4d6]">
+
+  <!-- Subtle SVG Wood/Paper Grain Overlay Filter -->
+  <svg class="fixed inset-0 w-full h-full pointer-events-none z-0 opacity-[0.035]" aria-hidden="true">
+    <filter id="studioNoiseFilter">
+      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch" />
+      <feColorMatrix type="saturate" values="0" />
+    </filter>
+    <rect width="100%" height="100%" filter="url(#studioNoiseFilter)" />
+  </svg>
+
+  <!-- Shared SVG Defs for Fretboard Finger Glow & Metallic Gradients -->
+  <svg class="w-0 h-0 absolute pointer-events-none" aria-hidden="true">
+    <defs>
+      <filter id="brassGlow" x="-40%" y="-40%" width="180%" height="180%">
+        <feGaussianBlur stdDeviation="2.2" result="blur" />
+        <feMerge>
+          <feMergeNode in="blur" />
+          <feMergeNode in="SourceGraphic" />
+        </feMerge>
+      </filter>
+      <linearGradient id="fretboardWood" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#19130e" />
+        <stop offset="50%" stop-color="#231b14" />
+        <stop offset="100%" stop-color="#17110c" />
+      </linearGradient>
+      <linearGradient id="boneNut" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#e5dccb" />
+        <stop offset="100%" stop-color="#b8ad99" />
+      </linearGradient>
+    </defs>
+  </svg>
+
+  <!-- Top Studio Header -->
+  <header class="sticky top-0 z-30 bg-[#12100e]/90 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-3.5 pb-2.5 flex flex-wrap items-center justify-between gap-4">
+      <!-- Brand Identity -->
+      <div class="flex items-center gap-3.5">
+        <div class="w-10 h-10 rounded-full bg-[#1a1713] border border-[#d4a24c]/40 flex items-center justify-center shadow-inner relative">
+          <!-- Soundhole Rosette SVG -->
+          <svg class="w-7 h-7 text-[#d4a24c]" viewBox="0 0 32 32" fill="none">
+            <circle cx="16" cy="16" r="13" stroke="currentColor" stroke-width="1" stroke-dasharray="2 2" opacity="0.55" />
+            <circle cx="16" cy="16" r="10" stroke="currentColor" stroke-width="1.4" opacity="0.85" />
+            <line x1="11" y1="6" x2="11" y2="26" stroke="#ece4d6" stroke-width="0.9" opacity="0.5" />
+            <line x1="14" y1="5" x2="14" y2="27" stroke="#ece4d6" stroke-width="0.8" opacity="0.5" />
+            <line x1="18" y1="5" x2="18" y2="27" stroke="#ece4d6" stroke-width="0.7" opacity="0.5" />
+            <line x1="21" y1="6" x2="21" y2="26" stroke="#ece4d6" stroke-width="0.6" opacity="0.5" />
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-baseline gap-2.5">
+            <h1 class="serif-display text-xl sm:text-2xl font-semibold tracking-wide text-[#ece4d6]">ChordFlow</h1>
+            <span class="text-xs tracking-widest uppercase text-[#d4a24c] font-medium">Quiet Guitar Studio</span>
+          </div>
+          <p class="text-xs text-[#a69c8e]">深夜木吉他練習室 ・ 自由轉調 ・ 智慧 Capo 試算 ・ 封閉和弦溫和簡化</p>
+        </div>
+      </div>
+
+      <!-- Practice & Editor Utility Bar -->
+      <div class="flex flex-wrap items-center gap-2.5">
+        <!-- Metronome -->
+        <div class="studio-recessed flex items-center px-2 py-1 gap-1.5">
+          <button id="btnMetronomeToggle" type="button" class="studio-btn px-3 py-1.5 rounded-md text-xs font-medium bg-[#221e19] hover:bg-[#2b2620] text-[#ece4d6] border border-[#ece4d6]/10 flex items-center gap-2">
+            <span id="metroIndicator" class="w-2 h-2 rounded-full bg-[#756c60] transition-all"></span>
+            <span id="metroLabel">節拍器</span>
+          </button>
+          <input id="inputBpm" type="number" min="40" max="220" value="84" aria-label="節拍器 BPM 速度" class="w-14 min-h-[36px] bg-[#12100e] border border-[#ece4d6]/10 rounded px-1.5 py-1 text-xs text-center mono-chord text-[#d4a24c]" title="BPM 速度" />
+          <span class="text-[11px] text-[#756c60] pr-1 mono-chord">BPM</span>
+        </div>
+
+        <!-- Auto Scroll -->
+        <div class="studio-recessed flex items-center px-2 py-1 gap-1.5">
+          <button id="btnAutoScroll" type="button" class="studio-btn px-3 py-1.5 rounded-md text-xs font-medium bg-[#221e19] hover:bg-[#2b2620] text-[#ece4d6] border border-[#ece4d6]/10 flex items-center gap-1.5">
+            <span id="scrollIcon" class="text-[#d4a24c]">▶</span>
+            <span id="scrollText">自動捲譜</span>
+          </button>
+          <select id="selectScrollSpeed" aria-label="自動捲譜速度" class="min-h-[36px] bg-[#12100e] border border-[#ece4d6]/10 rounded px-2 py-1 text-xs text-[#ece4d6]" title="捲動速度">
+            <option value="1">慢速 1x</option>
+            <option value="2" selected>適中 2x</option>
+            <option value="3">稍快 3x</option>
+            <option value="5">快速 5x</option>
+          </select>
+        </div>
+
+        <!-- Custom Song / Paste Sheet Modal Trigger -->
+        <button id="btnOpenEditor" type="button" class="studio-btn px-3.5 py-2 rounded-lg text-xs font-semibold bg-[#d4a24c] hover:bg-[#e6bc70] text-[#12100e] shadow-sm flex items-center gap-1.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          </svg>
+          <span>自訂 / 貼上吉他譜</span>
+          <svg class="btn-string-wrap" viewBox="0 0 100 8" preserveAspectRatio="none">
+            <path class="interactive-string" data-rest-y="4" d="M 0 4 Q 50 4 100 4" stroke="#12100e" stroke-opacity="0.45" stroke-width="1" fill="none" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Requirement 1: Full-width Interactive Guitar String under Top Header -->
+    <div id="headerStringArea" class="relative w-full h-5 cursor-pointer select-none flex items-center group" title="滑過或點擊撥動琴弦">
+      <svg id="headerStringSvg" class="w-full h-6 overflow-visible" viewBox="0 0 1200 24" preserveAspectRatio="none">
+        <path id="headerStringPath" data-rest-y="12" d="M 0 12 Q 600 12 1200 12" stroke="#d4a24c" stroke-opacity="0.55" stroke-width="1.35" fill="none" />
+      </svg>
+      <span class="absolute right-6 text-[10px] mono-chord text-[#756c60] opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">撥動琴弦 ♩</span>
+    </div>
+  </header>
+
+  <!-- Main Studio Workspace -->
+  <main class="relative z-10 flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-5 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- Left Column: Controls & Studio Rack (4 cols on desktop, top on mobile) -->
+    <aside class="lg:col-span-4 space-y-5">
+
+      <!-- 1. Repertoire / Song Selection -->
+      <section class="studio-card p-4 sm:p-5 space-y-3.5">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="serif-display text-base font-semibold text-[#ece4d6]">練習曲目庫</h2>
+            <p class="text-[11px] text-[#a69c8e]">內建公版練習曲與自訂樂譜</p>
+          </div>
+          <button id="btnNewSongQuick" type="button" class="studio-btn px-2.5 py-1 rounded-md text-xs text-[#d4a24c] hover:bg-[#d4a24c]/10 border border-[#d4a24c]/30 font-medium">
+            + 新增歌曲
+          </button>
+        </div>
+
+        <select id="selectSong" aria-label="選擇練習曲目" class="w-full min-h-[42px] bg-[#12100e] border border-[#ece4d6]/15 rounded-xl px-3.5 py-2 text-sm text-[#ece4d6] font-medium transition-colors hover:border-[#d4a24c]/50">
+        </select>
+
+        <div class="studio-recessed px-3.5 py-2.5 flex items-center justify-between text-xs text-[#a69c8e]">
+          <div>原調 <strong id="infoOrigKey" class="text-[#d4a24c] mono-chord ml-1">C</strong></div>
+          <span class="text-[#38322b]">|</span>
+          <div>拍號 <strong id="infoTimeSig" class="text-[#ece4d6] mono-chord ml-1">4/4</strong></div>
+          <span class="text-[#38322b]">|</span>
+          <div>速度 <strong id="infoSongBpm" class="text-[#ece4d6] mono-chord ml-1">84</strong> BPM</div>
+        </div>
+      </section>
+
+      <!-- Fretboard Inlay Divider -->
+      <div class="fret-divider" aria-hidden="true">
+        <span class="inlay-dot"></span>
+      </div>
+
+      <!-- 2. Pitch Transpose & Smart Capo Advisor -->
+      <section class="studio-card p-4 sm:p-5 space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="serif-display text-base font-semibold text-[#ece4d6]">轉調與變調夾 (Capo)</h2>
+            <p class="text-[11px] text-[#a69c8e]">換算實際音高與最佳開放把位</p>
+          </div>
+          <button id="btnResetKey" type="button" class="studio-btn px-2.5 py-1 rounded-md text-xs bg-[#221e19] hover:bg-[#2b2620] text-[#a69c8e] hover:text-[#ece4d6] border border-[#ece4d6]/10">
+            還原原調
+            <svg class="btn-string-wrap" viewBox="0 0 100 8" preserveAspectRatio="none">
+              <path class="interactive-string" data-rest-y="4" d="M 0 4 Q 50 4 100 4" stroke="#d4a24c" stroke-opacity="0.35" stroke-width="1" fill="none" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Key Transpose Box with Pitch-Bend String -->
+        <div class="studio-recessed p-3.5 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs text-[#a69c8e]">目標演唱調性 (半音升降)</span>
+            <div class="flex items-center gap-1 bg-[#12100e] p-0.5 rounded-lg border border-[#ece4d6]/10">
+              <button id="btnNotationSharp" type="button" class="min-h-[30px] px-2.5 py-0.5 rounded-md text-xs mono-chord bg-[#d4a24c] text-[#12100e] font-semibold transition"># 升記號</button>
+              <button id="btnNotationFlat" type="button" class="min-h-[30px] px-2.5 py-0.5 rounded-md text-xs mono-chord text-[#a69c8e] hover:text-[#ece4d6] transition">b 降記號</button>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between gap-2.5">
+            <button id="btnTransposeDown" type="button" class="studio-btn flex-1 py-2.5 px-3 rounded-xl bg-[#221e19] hover:bg-[#2c2620] text-xs font-semibold text-[#ece4d6] border border-[#ece4d6]/10">
+              <span>-1 半音 (降)</span>
+              <svg class="btn-string-wrap" viewBox="0 0 100 8" preserveAspectRatio="none">
+                <path class="interactive-string" data-rest-y="4" d="M 0 4 Q 50 4 100 4" stroke="#d4a24c" stroke-opacity="0.45" stroke-width="1.2" fill="none" />
+              </svg>
+            </button>
+
+            <!-- Current Key Display + Requirement 5 Pitch Bend String -->
+            <div class="px-4 py-1.5 rounded-xl bg-[#1a1713] border border-[#d4a24c]/35 text-center min-w-[96px] relative">
+              <div class="text-[10px] text-[#a69c8e] tracking-wider uppercase">目前調性</div>
+              <div id="displayCurrentKey" class="text-xl font-bold mono-chord text-[#d4a24c] leading-tight">C</div>
+              <svg id="keyBendSvg" class="w-full h-3 overflow-visible mt-0.5" viewBox="0 0 80 12" preserveAspectRatio="none">
+                <path id="keyBendPath" data-rest-y="6" d="M 0 6 Q 40 6 80 6" stroke="#d4a24c" stroke-width="1.4" fill="none" />
+              </svg>
+            </div>
+
+            <button id="btnTransposeUp" type="button" class="studio-btn flex-1 py-2.5 px-3 rounded-xl bg-[#221e19] hover:bg-[#2c2620] text-xs font-semibold text-[#ece4d6] border border-[#ece4d6]/10">
+              <span>+1 半音 (升)</span>
+              <svg class="btn-string-wrap" viewBox="0 0 100 8" preserveAspectRatio="none">
+                <path class="interactive-string" data-rest-y="4" d="M 0 4 Q 50 4 100 4" stroke="#d4a24c" stroke-opacity="0.45" stroke-width="1.2" fill="none" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Capo Selector & Smart Suggestions -->
+        <div class="studio-recessed p-3.5 space-y-3">
+          <div class="flex items-center justify-between gap-2">
+            <label for="selectCapo" class="text-xs text-[#ece4d6] font-medium">變調夾 (Capo) 把位</label>
+            <select id="selectCapo" class="min-h-[38px] bg-[#12100e] border border-[#ece4d6]/15 rounded-lg px-2.5 py-1 text-xs mono-chord text-[#6d9b87] font-medium">
+              <option value="0">不夾 Capo (第 0 格)</option>
+              <option value="1">Capo 第 1 格</option>
+              <option value="2">Capo 第 2 格</option>
+              <option value="3">Capo 第 3 格</option>
+              <option value="4">Capo 第 4 格</option>
+              <option value="5">Capo 第 5 格</option>
+              <option value="6">Capo 第 6 格</option>
+              <option value="7">Capo 第 7 格</option>
+              <option value="8">Capo 第 8 格</option>
+              <option value="9">Capo 第 9 格</option>
+            </select>
+          </div>
+
+          <div class="rounded-lg bg-[#161c19]/70 border border-[#6d9b87]/25 p-3 space-y-2">
+            <div class="flex flex-wrap items-center justify-between gap-1">
+              <span class="text-xs font-medium text-[#ece4d6]">智慧 Capo 建議（依目前簡化狀態評估）</span>
+              <span id="capoDifficultyBadge" class="text-[11px] px-2 py-0.5 rounded bg-[#6d9b87]/15 text-[#8ab8a4] mono-chord"></span>
+            </div>
+            <div id="capoSuggestionsList" class="space-y-1.5 pt-1">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Fretboard Inlay Divider (12th Fret Double Dots) -->
+      <div class="fret-divider" aria-hidden="true">
+        <span class="inlay-dot"></span>
+        <span class="inlay-dot"></span>
+      </div>
+
+      <!-- 3. Chord Simplification & Custom Substitution Rules -->
+      <section class="studio-card p-4 sm:p-5 space-y-3.5">
+        <div class="flex items-center justify-between gap-2">
+          <div>
+            <h2 class="serif-display text-base font-semibold text-[#ece4d6]">指法簡化與和弦替換</h2>
+            <p class="text-[11px] text-[#a69c8e]">自動避開大橫按或自訂替代規則</p>
+          </div>
+
+          <!-- Requirement 6: String-Pluck Toggle Switch -->
+          <button id="toggleEasyMode" type="button" role="switch" aria-checked="false" class="studio-btn group flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-[#12100e] border border-[#ece4d6]/15 hover:border-[#d4a24c]/50">
+            <div class="relative w-11 h-6 flex items-center">
+              <svg id="switchStringSvg" class="w-11 h-6 overflow-visible" viewBox="0 0 44 24">
+                <!-- Fretboard slot background -->
+                <rect x="2" y="5" width="40" height="14" rx="7" fill="#1a1713" stroke="rgba(236,228,214,0.12)" stroke-width="1" />
+                <!-- Vibrating string across the switch -->
+                <path id="switchStringPath" data-rest-y="12" d="M 4 12 Q 22 12 40 12" stroke="#d4a24c" stroke-width="1.4" fill="none" />
+                <!-- Brass Peg Knob -->
+                <circle id="switchKnob" cx="11" cy="12" r="5" fill="#a69c8e" class="transition-all duration-200 ease-out" />
+              </svg>
+            </div>
+            <span id="easyModeLabel" class="text-xs font-medium text-[#a69c8e] group-hover:text-[#ece4d6] transition-colors">一鍵簡化</span>
+          </button>
+        </div>
+
+        <p class="text-xs text-[#a69c8e] leading-relaxed">
+          開啟「一鍵簡化」會將封閉大橫按自動替換為溫和的開放和弦（如 <code class="mono-chord text-[#8ab8a4]">F → Fmaj7</code>、<code class="mono-chord text-[#8ab8a4]">Bm → Bm7</code>）。下方亦可手動指定專屬規則：
+        </p>
+
+        <!-- Custom Substitution Rule Input (No <form> tag per restriction) -->
+        <div class="studio-recessed p-3 space-y-2.5">
+          <div class="text-xs font-medium text-[#ece4d6]">新增自訂替換規則</div>
+          <div class="flex items-center gap-1.5">
+            <input id="inputSubFrom" type="text" placeholder="原和弦 (如 F)" aria-label="原和弦名稱" class="w-24 min-h-[40px] bg-[#12100e] border border-[#ece4d6]/12 rounded-lg px-2.5 py-1.5 text-xs mono-chord text-[#ece4d6]" />
+            <span class="text-[#756c60] text-xs mono-chord">→</span>
+            <input id="inputSubTo" type="text" placeholder="替換為 (如 Fmaj7)" aria-label="替換目標和弦名稱" class="flex-1 min-h-[40px] bg-[#12100e] border border-[#ece4d6]/12 rounded-lg px-2.5 py-1.5 text-xs mono-chord text-[#8ab8a4]" />
+            <button id="btnAddSubRule" type="button" class="studio-btn px-3.5 py-2 rounded-lg bg-[#d4a24c] hover:bg-[#e6bc70] text-[#12100e] text-xs font-semibold">
+              套用
+              <svg class="btn-string-wrap" viewBox="0 0 100 8" preserveAspectRatio="none">
+                <path class="interactive-string" data-rest-y="4" d="M 0 4 Q 50 4 100 4" stroke="#12100e" stroke-opacity="0.45" stroke-width="1" fill="none" />
+              </svg>
+            </button>
+          </div>
+
+          <div id="subRulesContainer" class="space-y-1.5 max-h-40 overflow-y-auto pr-1 pt-1">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+      </section>
+
+    </aside>
+
+    <!-- Right Column: Fretboard Deck, Detailed Chord Inspector & Lyric Sheet (8 cols) -->
+    <div class="lg:col-span-8 flex flex-col gap-5">
+
+      <!-- Song Chords Overview Deck -->
+      <section class="studio-card p-4 sm:p-5">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3.5">
+          <div>
+            <div class="flex items-center gap-2.5">
+              <h2 class="serif-display text-base font-semibold text-[#ece4d6]">本曲指板總覽</h2>
+              <span id="songChordCountBadge" class="text-xs px-2 py-0.5 rounded-full bg-[#12100e] border border-[#ece4d6]/10 text-[#d4a24c] mono-chord">0 個和弦</span>
+            </div>
+            <p class="text-xs text-[#a69c8e] mt-0.5">點擊任一和弦即可撥動六弦試聽，並於下方檢視器切換不同把位按法</p>
+          </div>
+          <button id="btnPlayAllChords" type="button" class="studio-btn px-3.5 py-2 rounded-xl bg-[#221e19] hover:bg-[#2b2620] text-[#d4a24c] border border-[#d4a24c]/30 text-xs font-medium flex items-center gap-2">
+            <span>🔊 依序試聽本曲和弦</span>
+            <svg class="btn-string-wrap" viewBox="0 0 100 8" preserveAspectRatio="none">
+              <path class="interactive-string" data-rest-y="4" d="M 0 4 Q 50 4 100 4" stroke="#d4a24c" stroke-opacity="0.45" stroke-width="1" fill="none" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Horizontal Scrollable Fretboard Cards -->
+        <div id="songChordsDeck" class="flex items-stretch gap-3 overflow-x-auto pb-2 pt-0.5">
+          <!-- Populated by JS -->
+        </div>
+      </section>
+
+      <!-- Large Interactive Chord Inspector & Voicing Switcher -->
+      <section id="chordInspectorPanel" class="studio-card p-4 sm:p-5 border-[#d4a24c]/25">
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-5 items-center">
+          <!-- Realistic Large Fretboard SVG Container -->
+          <div class="md:col-span-4 flex flex-col items-center justify-center studio-recessed p-3.5">
+            <div id="inspectorSvgContainer" class="w-40 h-48 flex items-center justify-center cursor-pointer" title="點擊指板撥弦試聽"></div>
+            <button id="btnStrumSelected" type="button" class="studio-btn mt-2.5 w-full py-2 rounded-lg bg-[#d4a24c]/15 hover:bg-[#d4a24c]/25 text-[#e6bc70] border border-[#d4a24c]/35 text-xs font-medium flex items-center justify-center gap-1.5">
+              <span>🔊 點擊刷弦試聽</span>
+              <svg class="btn-string-wrap" viewBox="0 0 100 8" preserveAspectRatio="none">
+                <path class="interactive-string" data-rest-y="4" d="M 0 4 Q 50 4 100 4" stroke="#d4a24c" stroke-opacity="0.5" stroke-width="1" fill="none" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Chord Breakdown & Voicing Options -->
+          <div class="md:col-span-8 space-y-3.5">
+            <div class="flex flex-wrap items-start justify-between gap-2 border-b border-[#ece4d6]/10 pb-3">
+              <div>
+                <div class="flex flex-wrap items-center gap-2.5">
+                  <span class="text-xs text-[#a69c8e]">指板檢視：</span>
+                  <h3 id="inspectorChordName" class="text-2xl font-bold mono-chord text-[#d4a24c]">C</h3>
+                  <span id="inspectorDifficultyTag" class="text-xs px-2.5 py-0.5 rounded-full bg-[#6d9b87]/15 text-[#8ab8a4] border border-[#6d9b87]/30">開放好按</span>
+                </div>
+                <p id="inspectorNotesInfo" class="text-xs text-[#a69c8e] mt-1 mono-chord">組成音：C - E - G ｜ 指法：x32010</p>
+                <!-- Explicit Fallback Warning Banner when uncommon chord is approximated -->
+                <div id="inspectorFallbackNotice" class="hidden mt-1.5 text-xs px-2.5 py-1 rounded bg-[#d4a24c]/15 border border-[#d4a24c]/35 text-[#e6bc70]"></div>
+              </div>
+              <div id="inspectorCapoSoundNote" class="text-xs px-3 py-1.5 rounded-lg bg-[#12100e] border border-[#ece4d6]/10 text-[#ece4d6] mono-chord">
+                實際音高：C
+              </div>
+            </div>
+
+            <!-- Voicing Variations Switcher -->
+            <div>
+              <div class="text-xs font-medium text-[#a69c8e] mb-2">切換不同把位與簡化按法 (Voicings)：</div>
+              <div id="inspectorVoicingButtons" class="flex flex-wrap gap-2">
+                <!-- Populated by JS -->
+              </div>
+            </div>
+
+            <!-- One-click Chord Substitution in Sheet -->
+            <div class="studio-recessed p-3 flex flex-wrap items-center justify-between gap-2.5">
+              <div class="text-xs text-[#a69c8e]">
+                <span class="font-medium text-[#8ab8a4]">替換建議：</span>
+                <span id="inspectorAltHint">可將譜面上所有此和弦一鍵改為相容的簡易和弦</span>
+              </div>
+              <div id="inspectorQuickSubButtons" class="flex flex-wrap gap-1.5">
+                <!-- Populated by JS -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Main Lyric & Chord Sheet Viewer -->
+      <section class="studio-card flex-1 flex flex-col overflow-hidden">
+        <!-- Sheet Header Toolbar -->
+        <div class="border-b border-[#ece4d6]/10 px-5 py-3.5 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 id="sheetSongTitle" class="serif-display text-lg sm:text-xl font-semibold text-[#ece4d6]">載入中...</h2>
+            <p id="sheetSongSubtitle" class="text-xs text-[#a69c8e] mt-0.5"></p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <!-- Layout Mode Switcher -->
+            <div class="studio-recessed p-0.5 flex items-center text-xs">
+              <button id="btnModeOver" type="button" class="min-h-[34px] px-3 py-1 rounded-md bg-[#d4a24c] text-[#12100e] font-semibold transition">雙行對齊譜</button>
+              <button id="btnModeInline" type="button" class="min-h-[34px] px-3 py-1 rounded-md text-[#a69c8e] hover:text-[#ece4d6] transition">[C] 行內簡譜</button>
+            </div>
+
+            <!-- Font Size Controls -->
+            <div class="studio-recessed p-0.5 flex items-center text-xs">
+              <button id="btnFontDec" type="button" class="min-h-[34px] px-2.5 py-1 rounded-md text-[#ece4d6] hover:bg-[#221e19] font-semibold" title="縮小字體">A-</button>
+              <span id="labelFontSize" class="px-2 text-[#a69c8e] mono-chord">16px</span>
+              <button id="btnFontInc" type="button" class="min-h-[34px] px-2.5 py-1 rounded-md text-[#ece4d6] hover:bg-[#221e19] font-semibold" title="放大字體">A+</button>
+            </div>
+
+            <!-- Copy Processed Sheet -->
+            <button id="btnCopySheet" type="button" class="studio-btn px-3 py-1.5 rounded-lg bg-[#221e19] hover:bg-[#2b2620] text-[#ece4d6] text-xs font-medium border border-[#ece4d6]/10">
+              複製轉調後譜面
+            </button>
+          </div>
+        </div>
+
+        <!-- Subtle Key & Substitution Status Bar -->
+        <div id="sheetStatusBanner" class="bg-[#12100e]/60 border-b border-[#ece4d6]/05 px-5 py-2 text-xs flex flex-wrap items-center justify-between gap-2 text-[#a69c8e]">
+          <div id="sheetTransposeSummary">目前顯示：原調指法</div>
+          <div id="sheetSubSummary" class="text-[#8ab8a4] mono-chord"></div>
+        </div>
+
+        <!-- Scrollable Lyric & Chord Sheet -->
+        <div id="sheetScrollContainer" class="p-5 sm:p-7 overflow-y-auto max-h-[560px]">
+          <div id="sheetContent" class="max-w-3xl leading-relaxed"></div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- Modal: Custom Song & Two-Line Sheet Converter (No <form> element) -->
+  <div id="modalEditor" class="fixed inset-0 z-50 hidden bg-[#0d0b09]/85 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="modalEditorTitle">
+    <div class="studio-card max-w-2xl w-full p-5 sm:p-6 space-y-4 max-h-[90vh] flex flex-col border-[#d4a24c]/30">
+      <div class="flex items-center justify-between border-b border-[#ece4d6]/10 pb-3">
+        <div>
+          <h3 id="modalEditorTitle" class="serif-display text-lg font-semibold text-[#ece4d6]">自訂編輯 / 貼上吉他譜</h3>
+          <p class="text-xs text-[#a69c8e]">支援 <code class="mono-chord text-[#d4a24c]">[C]歌詞</code> 格式，或直接貼上「上方和弦行、下方歌詞行」的雙行吉他譜自動轉換</p>
+        </div>
+        <button id="btnCloseEditor" type="button" aria-label="關閉編輯器" class="studio-btn w-10 h-10 rounded-lg text-[#a69c8e] hover:text-[#ece4d6] hover:bg-[#221e19] flex items-center justify-center">✕</button>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+        <div class="sm:col-span-2">
+          <label for="editSongTitle" class="block text-xs text-[#a69c8e] mb-1">歌曲名稱</label>
+          <input id="editSongTitle" type="text" placeholder="例如：深夜木吉他練習" class="w-full min-h-[40px] bg-[#12100e] border border-[#ece4d6]/15 rounded-lg px-3 py-2 text-sm text-[#ece4d6]" />
+        </div>
+        <div>
+          <label for="editSongKey" class="block text-xs text-[#a69c8e] mb-1">原調 (Key)</label>
+          <select id="editSongKey" class="w-full min-h-[40px] bg-[#12100e] border border-[#ece4d6]/15 rounded-lg px-3 py-2 text-sm mono-chord text-[#d4a24c]">
+            <option value="C">C</option>
+            <option value="Db">Db / C#</option>
+            <option value="D">D</option>
+            <option value="Eb">Eb / D#</option>
+            <option value="E">E</option>
+            <option value="F">F</option>
+            <option value="F#">F# / Gb</option>
+            <option value="G">G</option>
+            <option value="Ab">Ab / G#</option>
+            <option value="A">A</option>
+            <option value="Bb">Bb / A#</option>
+            <option value="B">B</option>
+          </select>
+        </div>
+        <div>
+          <label for="editSongBpm" class="block text-xs text-[#a69c8e] mb-1">速度 (BPM)</label>
+          <input id="editSongBpm" type="number" min="40" max="220" value="88" class="w-full min-h-[40px] bg-[#12100e] border border-[#ece4d6]/15 rounded-lg px-3 py-2 text-sm mono-chord text-[#ece4d6]" />
+        </div>
+      </div>
+
+      <div class="flex-1 flex flex-col min-h-[240px]">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+          <label for="editSongContent" class="text-xs text-[#a69c8e]">譜面內容（在歌詞字元前加上 <code class="mono-chord text-[#d4a24c]">[和弦]</code>，或貼上雙行譜後點擊右側轉換）：</label>
+          <button id="btnConvertTwoLine" type="button" class="studio-btn px-3 py-1 rounded-lg bg-[#221e19] hover:bg-[#2c2620] text-[#d4a24c] border border-[#d4a24c]/30 text-xs font-medium">
+            ✨ 自動將雙行譜轉為 [和弦] 格式
+          </button>
+        </div>
+        <textarea id="editSongContent" rows="10" class="w-full flex-1 bg-[#12100e] border border-[#ece4d6]/15 rounded-xl p-3.5 text-sm mono-chord text-[#ece4d6] leading-relaxed" placeholder="[C]一閃一閃[F]亮晶[C]晶&#10;[F]滿天[C]都是[G7]小星[C]星"></textarea>
+      </div>
+
+      <div class="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-[#ece4d6]/10">
+        <button id="btnDeleteCustomSong" type="button" class="studio-btn px-3.5 py-2 rounded-lg bg-[#3a1d1d]/60 hover:bg-[#4d2525]/80 text-[#e09f9f] border border-[#e09f9f]/25 text-xs font-medium">
+          刪除此自訂歌曲
+        </button>
+        <div class="flex items-center gap-2.5 ml-auto">
+          <button id="btnSaveAsNewSong" type="button" class="studio-btn px-4 py-2 rounded-lg bg-[#221e19] hover:bg-[#2b2620] text-[#ece4d6] text-xs font-medium border border-[#ece4d6]/15">
+            另存為新歌曲
+          </button>
+          <button id="btnSaveCurrentSong" type="button" class="studio-btn px-4 py-2 rounded-lg bg-[#d4a24c] hover:bg-[#e6bc70] text-[#12100e] text-xs font-semibold">
+            儲存並套用至譜面
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Warm Studio Toast Notification -->
+  <div id="toastBox" class="fixed bottom-5 right-5 z-50 hidden px-4 py-2.5 rounded-xl bg-[#1a1713] border border-[#d4a24c]/45 text-[#ece4d6] text-xs font-medium shadow-2xl"></div>
+
+  <script>
+    // =========================================================
+    // 0. 阻尼正弦波琴弦物理動畫引擎 (Shared Single rAF Loop)
+    // =========================================================
+    const activeStringAnimations = new Map();
+    let stringRafId = null;
+
+    function prefersReducedMotion() {
+      return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    }
+
+    /**
+     * Plucks an SVG <path> element using a damped harmonic oscillator on its quadratic Bezier control point.
+     * Supports both horizontal strings (data-rest-y) and vertical fretboard strings (data-rest-x).
+     */
+    function pluck(pathEl, options = {}) {
+      if (!pathEl) return;
+
+      const origStroke = pathEl.getAttribute('data-orig-stroke') || pathEl.getAttribute('stroke') || '#d4a24c';
+      if (!pathEl.getAttribute('data-orig-stroke')) {
+        pathEl.setAttribute('data-orig-stroke', origStroke);
+      }
+
+      // Highlight string with warm brass glow
+      pathEl.setAttribute('stroke', options.highlightColor || '#e6bc70');
+
+      if (prefersReducedMotion()) {
+        setTimeout(() => {
+          pathEl.setAttribute('stroke', origStroke);
+        }, 260);
+        return;
+      }
+
+      const orientation = pathEl.getAttribute('data-orientation') || 'horizontal';
+      const amplitude = options.amplitude !== undefined ? options.amplitude : 5.5;
+      const frequency = options.frequency !== undefined ? options.frequency : 42; // rad/s
+      const decay = options.decay !== undefined ? options.decay : 3.2;            // damping factor
+      const bendOffset = options.bendOffset || 0;                                 // initial pitch-bend displacement
+
+      activeStringAnimations.set(pathEl, {
+        startTime: performance.now(),
+        orientation,
+        amplitude,
+        frequency,
+        decay,
+        bendOffset,
+        origStroke,
+        x1: parseFloat(pathEl.getAttribute('data-x1') || '0'),
+        y1: parseFloat(pathEl.getAttribute('data-y1') || pathEl.getAttribute('data-rest-y') || '4'),
+        x2: parseFloat(pathEl.getAttribute('data-x2') || '100'),
+        y2: parseFloat(pathEl.getAttribute('data-y2') || pathEl.getAttribute('data-rest-y') || '4'),
+        restX: parseFloat(pathEl.getAttribute('data-rest-x') || '0'),
+        restY: parseFloat(pathEl.getAttribute('data-rest-y') || '4')
+      });
+
+      if (!stringRafId) {
+        stringRafId = requestAnimationFrame(stepStringAnimations);
+      }
+    }
+
+    function stepStringAnimations(now) {
+      activeStringAnimations.forEach((anim, pathEl) => {
+        if (!pathEl.isConnected) {
+          activeStringAnimations.delete(pathEl);
+          return;
+        }
+
+        const elapsed = (now - anim.startTime) / 1000;
+        const envelope = Math.exp(-anim.decay * elapsed);
+        let displacement = 0;
+
+        if (anim.bendOffset !== 0 && elapsed < 0.14) {
+          // Pitch bend phase: pull string smoothly then release into oscillation
+          const bendProgress = elapsed / 0.14;
+          displacement = anim.bendOffset * Math.sin(bendProgress * Math.PI);
+        } else {
+          const oscTime = anim.bendOffset !== 0 ? (elapsed - 0.14) : elapsed;
+          displacement = anim.amplitude * Math.sin(anim.frequency * oscTime) * envelope;
+        }
+
+        if (elapsed > 1.45 || (elapsed > 0.16 && Math.abs(anim.amplitude * envelope) < 0.12)) {
+          // Settle back to rest position
+          if (anim.orientation === 'vertical') {
+            const midY = (anim.y1 + anim.y2) / 2;
+            pathEl.setAttribute('d', `M ${anim.restX} ${anim.y1} Q ${anim.restX} ${midY} ${anim.restX} ${anim.y2}`);
+          } else {
+            const w = anim.x2 || 100;
+            pathEl.setAttribute('d', `M 0 ${anim.restY} Q ${w / 2} ${anim.restY} ${w} ${anim.restY}`);
+          }
+          pathEl.setAttribute('stroke', anim.origStroke);
+          activeStringAnimations.delete(pathEl);
+          return;
+        }
+
+        if (anim.orientation === 'vertical') {
+          const midY = (anim.y1 + anim.y2) / 2;
+          const cx = (anim.restX + displacement).toFixed(2);
+          pathEl.setAttribute('d', `M ${anim.restX} ${anim.y1} Q ${cx} ${midY} ${anim.restX} ${anim.y2}`);
+        } else {
+          const w = anim.x2 || 100;
+          const cy = (anim.restY + displacement).toFixed(2);
+          pathEl.setAttribute('d', `M 0 ${anim.restY} Q ${w / 2} ${cy} ${w} ${anim.restY}`);
+        }
+      });
+
+      if (activeStringAnimations.size > 0) {
+        stringRafId = requestAnimationFrame(stepStringAnimations);
+      } else {
+        stringRafId = null;
+      }
+    }
+
+    // Helper to pluck the subtle string inside any button
+    function pluckButtonString(btnEl, opts = {}) {
+      if (!btnEl) return;
+      const path = btnEl.querySelector('path.interactive-string');
+      if (path) {
+        path.setAttribute('data-x2', '100');
+        pluck(path, { amplitude: 3.6, frequency: 48, decay: 3.8, ...opts });
+      }
+    }
+
+    // =========================================================
+    // 1. 樂理常數與校對後的吉他和弦指板資料庫
+    // =========================================================
+    const NOTES_SHARP = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    const NOTES_FLAT  = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+
+    const NOTE_TO_INDEX = {
+      'C': 0, 'B#': 0,
+      'C#': 1, 'Db': 1,
+      'D': 2,
+      'D#': 3, 'Eb': 3,
+      'E': 4, 'Fb': 4,
+      'F': 5, 'E#': 5,
+      'F#': 6, 'Gb': 6,
+      'G': 7,
+      'G#': 8, 'Ab': 8,
+      'A': 9,
+      'A#': 10, 'Bb': 10,
+      'B': 11, 'Cb': 11
+    };
+
+    // Enharmonic canonical lookup table so C#/Db, D#/Eb, F#/Gb, G#/Ab, A#/Bb share complete voicings
+    const ENHARMONIC_EQUIV = {
+      'Db': 'C#', 'C#': 'Db',
+      'Eb': 'D#', 'D#': 'Eb',
+      'Gb': 'F#', 'F#': 'Gb',
+      'Ab': 'G#', 'G#': 'Ab',
+      'Bb': 'A#', 'A#': 'Bb'
+    };
+
+    // Guitar standard tuning MIDI notes: 6th(E2)=40, 5th(A2)=45, 4th(D3)=50, 3rd(G3)=55, 2nd(B3)=59, 1st(E4)=64
+    const OPEN_STRING_MIDI = [40, 45, 50, 55, 59, 64];
+
+    // Verified & Corrected Chord Voicings Database
+    // frets: [6th(E), 5th(A), 4th(D), 3rd(G), 2nd(B), 1st(E)], -1 = mute (x), 0 = open
+    const CHORD_DB = {
+      'C': {
+        difficulty: 1,
+        notes: 'C - E - G',
+        easyAlts: ['Cmaj7', 'Cadd9'],
+        voicings: [
+          { label: '標準開放按法', frets: [-1, 3, 2, 0, 1, 0], fingers: [0, 3, 2, 0, 1, 0] },
+          { label: '極簡兩指 (Cmaj7聲響)', frets: [-1, 3, 2, 0, 0, 0], fingers: [0, 3, 2, 0, 0, 0] },
+          { label: '厚實滿聲部 (C/G)', frets: [3, 3, 2, 0, 1, 0], fingers: [3, 4, 2, 0, 1, 0] }
+        ]
+      },
+      'Cmaj7': {
+        difficulty: 1,
+        notes: 'C - E - G - B',
+        easyAlts: ['C', 'Am7'],
+        voicings: [
+          { label: '極簡兩指開放', frets: [-1, 3, 2, 0, 0, 0], fingers: [0, 3, 2, 0, 0, 0] }
+        ]
+      },
+      'Cadd9': {
+        difficulty: 1,
+        notes: 'C - E - G - D',
+        easyAlts: ['C', 'Cmaj7'],
+        voicings: [
+          { label: '民謠清脆開放按法', frets: [-1, 3, 2, 0, 3, 0], fingers: [0, 2, 1, 0, 3, 0] }
+        ]
+      },
+      'C7': {
+        difficulty: 1,
+        notes: 'C - E - G - Bb',
+        easyAlts: ['C'],
+        voicings: [
+          { label: '標準開放按法', frets: [-1, 3, 2, 3, 1, 0], fingers: [0, 3, 2, 4, 1, 0] }
+        ]
+      },
+      'Cm': {
+        difficulty: 3,
+        notes: 'C - Eb - G',
+        easyAlts: ['Cm7'],
+        voicings: [
+          { label: '標準三格封閉', frets: [-1, 3, 5, 5, 4, 3], fingers: [0, 1, 3, 4, 2, 1], barre: { fret: 3, from: 1, to: 5 } },
+          { label: '免大橫按簡易四弦', frets: [-1, -1, 5, 5, 4, 3], fingers: [0, 0, 3, 4, 2, 1] }
+        ]
+      },
+      'Cm7': {
+        difficulty: 2,
+        notes: 'C - Eb - G - Bb',
+        easyAlts: ['Am7'],
+        voicings: [
+          { label: '三格封閉標準按法', frets: [-1, 3, 5, 3, 4, 3], fingers: [0, 1, 3, 1, 2, 1], barre: { fret: 3, from: 1, to: 5 } },
+          { label: '免橫按簡易高音四弦', frets: [-1, -1, 1, 3, 1, 3], fingers: [0, 0, 1, 3, 2, 4] }
+        ]
+      },
+      'C#': {
+        difficulty: 3,
+        notes: 'C# - E# - G#',
+        easyAlts: ['Dbmaj7'],
+        voicings: [
+          { label: '四格封閉標準按法', frets: [-1, 4, 6, 6, 6, 4], fingers: [0, 1, 2, 3, 4, 1], barre: { fret: 4, from: 1, to: 5 } },
+          { label: '免大橫按簡易四弦', frets: [-1, -1, 3, 1, 2, 1], fingers: [0, 0, 3, 1, 2, 1], barre: { fret: 1, from: 1, to: 3 } }
+        ]
+      },
+      'Dbmaj7': {
+        difficulty: 2,
+        notes: 'Db - F - Ab - C',
+        easyAlts: ['Fm7'],
+        voicings: [
+          { label: '簡易三指四弦按法', frets: [-1, -1, 3, 1, 1, 1], fingers: [0, 0, 3, 1, 1, 1], barre: { fret: 1, from: 1, to: 3 } },
+          { label: '溫潤五弦點按版', frets: [-1, 4, 3, 1, 1, -1], fingers: [0, 4, 3, 1, 1, 0] }
+        ]
+      },
+      'C#m': {
+        difficulty: 3,
+        notes: 'C# - E - G#',
+        easyAlts: ['C#m7'],
+        voicings: [
+          { label: '標準四格封閉', frets: [-1, 4, 6, 6, 5, 4], fingers: [0, 1, 3, 4, 2, 1], barre: { fret: 4, from: 1, to: 5 } },
+          { label: '免大橫按純三和弦 (四弦)', frets: [-1, -1, 6, 6, 5, 4], fingers: [0, 0, 3, 4, 2, 1] },
+          { label: '開放一二弦替代 (C#m7聲響)', frets: [-1, 4, 2, 1, 0, 0], fingers: [0, 4, 2, 1, 0, 0] }
+        ]
+      },
+      'C#m7': {
+        difficulty: 1,
+        notes: 'C# - E - G# - B',
+        easyAlts: ['E', 'Asus2'],
+        voicings: [
+          { label: '開放一二弦免橫按', frets: [-1, 4, 2, 1, 0, 0], fingers: [0, 4, 2, 1, 0, 0] },
+          { label: '四格封閉標準版', frets: [-1, 4, 6, 4, 5, 4], fingers: [0, 1, 3, 1, 2, 1], barre: { fret: 4, from: 1, to: 5 } }
+        ]
+      },
+      'D': {
+        difficulty: 1,
+        notes: 'D - F# - A',
+        easyAlts: ['Dsus2', 'Dsus4'],
+        voicings: [
+          { label: '標準開放按法', frets: [-1, -1, 0, 2, 3, 2], fingers: [0, 0, 0, 1, 3, 2] },
+          { label: '極簡兩指 (Dsus2)', frets: [-1, -1, 0, 2, 3, 0], fingers: [0, 0, 0, 1, 3, 0] }
+        ]
+      },
+      'Dsus2': {
+        difficulty: 1,
+        notes: 'D - E - A',
+        easyAlts: ['D'],
+        voicings: [
+          { label: '極簡兩指開放', frets: [-1, -1, 0, 2, 3, 0], fingers: [0, 0, 0, 1, 3, 0] }
+        ]
+      },
+      'Dsus4': {
+        difficulty: 1,
+        notes: 'D - G - A',
+        easyAlts: ['D'],
+        voicings: [
+          { label: '標準開放按法', frets: [-1, -1, 0, 2, 3, 3], fingers: [0, 0, 0, 1, 2, 3] }
+        ]
+      },
+      'D7': {
+        difficulty: 1,
+        notes: 'D - F# - A - C',
+        easyAlts: ['D'],
+        voicings: [
+          { label: '標準開放按法', frets: [-1, -1, 0, 2, 1, 2], fingers: [0, 0, 0, 2, 1, 3] }
+        ]
+      },
+      'Dm': {
+        difficulty: 1,
+        notes: 'D - F - A',
+        easyAlts: ['Dm7'],
+        voicings: [
+          { label: '標準開放按法', frets: [-1, -1, 0, 2, 3, 1], fingers: [0, 0, 0, 2, 3, 1] }
+        ]
+      },
+      'Dm7': {
+        difficulty: 1,
+        notes: 'D - F - A - C',
+        easyAlts: ['Dm', 'Fmaj7'],
+        voicings: [
+          { label: '標準小橫按開放版', frets: [-1, -1, 0, 2, 1, 1], fingers: [0, 0, 0, 2, 1, 1], barre: { fret: 1, from: 1, to: 2 } }
+        ]
+      },
+      'Eb': {
+        difficulty: 3,
+        notes: 'Eb - G - Bb',
+        easyAlts: ['Ebmaj7'],
+        voicings: [
+          { label: '簡易高音四弦按法', frets: [-1, -1, 1, 3, 4, 3], fingers: [0, 0, 1, 2, 4, 3] },
+          { label: '六格封閉標準按法', frets: [-1, 6, 8, 8, 8, 6], fingers: [0, 1, 2, 3, 4, 1], barre: { fret: 6, from: 1, to: 5 } }
+        ]
+      },
+      'Ebmaj7': {
+        difficulty: 2,
+        notes: 'Eb - G - Bb - D',
+        easyAlts: ['Cm7'],
+        voicings: [
+          { label: '簡易四弦小橫按', frets: [-1, -1, 1, 3, 3, 3], fingers: [0, 0, 1, 2, 2, 2], barre: { fret: 3, from: 1, to: 3 } }
+        ]
+      },
+      'E': {
+        difficulty: 1,
+        notes: 'E - G# - B',
+        easyAlts: ['E7', 'Esus4'],
+        voicings: [
+          { label: '標準開放按法', frets: [0, 2, 2, 1, 0, 0], fingers: [0, 2, 3, 1, 0, 0] }
+        ]
+      },
+      'E7': {
+        difficulty: 1,
+        notes: 'E - G# - B - D',
+        easyAlts: ['E'],
+        voicings: [
+          { label: '極簡兩指開放', frets: [0, 2, 0, 1, 0, 0], fingers: [0, 2, 0, 1, 0, 0] }
+        ]
+      },
+      'Em': {
+        difficulty: 1,
+        notes: 'E - G - B',
+        easyAlts: ['Em7'],
+        voicings: [
+          { label: '標準兩指開放', frets: [0, 2, 2, 0, 0, 0], fingers: [0, 2, 3, 0, 0, 0] }
+        ]
+      },
+      'Em7': {
+        difficulty: 1,
+        notes: 'E - G - B - D',
+        easyAlts: ['Em'],
+        voicings: [
+          { label: '極簡一指開放', frets: [0, 2, 0, 0, 0, 0], fingers: [0, 2, 0, 0, 0, 0] },
+          { label: '民謠清脆四指版', frets: [0, 2, 2, 0, 3, 0], fingers: [0, 1, 2, 0, 3, 0] }
+        ]
+      },
+      'F': {
+        difficulty: 3,
+        notes: 'F - A - C',
+        easyAlts: ['Fmaj7', 'Dm7'],
+        voicings: [
+          { label: '標準一格大橫按 (封閉)', frets: [1, 3, 3, 2, 1, 1], fingers: [1, 3, 4, 2, 1, 1], barre: { fret: 1, from: 1, to: 6 } },
+          { label: '免大橫按 (簡易四弦)', frets: [-1, -1, 3, 2, 1, 1], fingers: [0, 0, 3, 2, 1, 1], barre: { fret: 1, from: 1, to: 2 } },
+          { label: '開放一弦替代 (Fmaj7聲響)', frets: [-1, -1, 3, 2, 1, 0], fingers: [0, 0, 3, 2, 1, 0] }
+        ]
+      },
+      'Fmaj7': {
+        difficulty: 1,
+        notes: 'F - A - C - E',
+        easyAlts: ['Dm7', 'C'],
+        voicings: [
+          { label: '新手救星三指開放', frets: [-1, -1, 3, 2, 1, 0], fingers: [0, 0, 3, 2, 1, 0] },
+          { label: '溫潤五弦版 (Fmaj7/C)', frets: [-1, 3, 3, 2, 1, 0], fingers: [0, 3, 4, 2, 1, 0] }
+        ]
+      },
+      'Fm': {
+        difficulty: 3,
+        notes: 'F - Ab - C',
+        easyAlts: ['Fm7'],
+        voicings: [
+          { label: '標準一格封閉', frets: [1, 3, 3, 1, 1, 1], fingers: [1, 3, 4, 1, 1, 1], barre: { fret: 1, from: 1, to: 6 } },
+          { label: '簡易高音四弦', frets: [-1, -1, 3, 1, 1, 1], fingers: [0, 0, 3, 1, 1, 1], barre: { fret: 1, from: 1, to: 3 } }
+        ]
+      },
+      'Fm7': {
+        difficulty: 2,
+        notes: 'F - Ab - C - Eb',
+        easyAlts: ['Dbmaj7'],
+        voicings: [
+          { label: '簡易高音四弦小橫按', frets: [-1, -1, 1, 1, 1, 1], fingers: [0, 0, 1, 1, 1, 1], barre: { fret: 1, from: 1, to: 4 } },
+          { label: '一格封閉標準版', frets: [1, 3, 1, 1, 1, 1], fingers: [1, 3, 1, 1, 1, 1], barre: { fret: 1, from: 1, to: 6 } }
+        ]
+      },
+      'F#': {
+        difficulty: 3,
+        notes: 'F# - A# - C#',
+        easyAlts: ['F#maj7'],
+        voicings: [
+          { label: '二格封閉大橫按', frets: [2, 4, 4, 3, 2, 2], fingers: [1, 3, 4, 2, 1, 1], barre: { fret: 2, from: 1, to: 6 } },
+          { label: '免大橫按簡易四弦', frets: [-1, -1, 4, 3, 2, 2], fingers: [0, 0, 3, 2, 1, 1], barre: { fret: 2, from: 1, to: 2 } }
+        ]
+      },
+      'F#maj7': {
+        difficulty: 2,
+        notes: 'F# - A# - C# - E#',
+        easyAlts: ['D#m7'],
+        voicings: [
+          { label: '簡易四弦階梯按法', frets: [-1, -1, 4, 3, 2, 1], fingers: [0, 0, 4, 3, 2, 1] }
+        ]
+      },
+      'F#m': {
+        difficulty: 3,
+        notes: 'F# - A - C#',
+        easyAlts: ['F#m7'],
+        voicings: [
+          { label: '標準二格封閉', frets: [2, 4, 4, 2, 2, 2], fingers: [1, 3, 4, 1, 1, 1], barre: { fret: 2, from: 1, to: 6 } },
+          { label: '簡易高音四弦', frets: [-1, -1, 4, 2, 2, 2], fingers: [0, 0, 3, 1, 1, 1], barre: { fret: 2, from: 1, to: 3 } },
+          { label: '開放一弦替代 (F#m7聲響)', frets: [-1, -1, 4, 2, 2, 0], fingers: [0, 0, 3, 1, 2, 0] }
+        ]
+      },
+      'F#m7': {
+        difficulty: 1,
+        notes: 'F# - A - C# - E',
+        easyAlts: ['Asus2', 'Dmaj7'],
+        voicings: [
+          { label: '開放第一弦簡易版', frets: [-1, -1, 4, 2, 2, 0], fingers: [0, 0, 3, 1, 2, 0] }
+        ]
+      },
+      'G': {
+        difficulty: 1,
+        notes: 'G - B - D',
+        easyAlts: ['G6', 'Gadd9'],
+        voicings: [
+          { label: '標準開放按法', frets: [3, 2, 0, 0, 0, 3], fingers: [2, 1, 0, 0, 0, 3] },
+          { label: '民謠雙高音四指版', frets: [3, 2, 0, 0, 3, 3], fingers: [2, 1, 0, 0, 3, 4] },
+          { label: '極簡兩指開放 (G6)', frets: [3, 2, 0, 0, 0, 0], fingers: [2, 1, 0, 0, 0, 0] }
+        ]
+      },
+      'G6': {
+        difficulty: 1,
+        notes: 'G - B - D - E',
+        easyAlts: ['G'],
+        voicings: [
+          { label: '極簡兩指開放', frets: [3, 2, 0, 0, 0, 0], fingers: [2, 1, 0, 0, 0, 0] }
+        ]
+      },
+      'G7': {
+        difficulty: 1,
+        notes: 'G - B - D - F',
+        easyAlts: ['G'],
+        voicings: [
+          { label: '標準開放按法', frets: [3, 2, 0, 0, 0, 1], fingers: [3, 2, 0, 0, 0, 1] }
+        ]
+      },
+      'Gm': {
+        difficulty: 3,
+        notes: 'G - Bb - D',
+        easyAlts: ['Gm7'],
+        voicings: [
+          { label: '標準三格封閉', frets: [3, 5, 5, 3, 3, 3], fingers: [1, 3, 4, 1, 1, 1], barre: { fret: 3, from: 1, to: 6 } },
+          { label: '免大橫按簡易四弦', frets: [-1, -1, 0, 3, 3, 3], fingers: [0, 0, 0, 1, 1, 1], barre: { fret: 3, from: 1, to: 3 } }
+        ]
+      },
+      'Gm7': {
+        difficulty: 1,
+        notes: 'G - Bb - D - F',
+        easyAlts: ['Bbmaj7'],
+        voicings: [
+          { label: '開放四弦簡易版', frets: [-1, -1, 0, 3, 3, 1], fingers: [0, 0, 0, 2, 3, 1] }
+        ]
+      },
+      'Ab': {
+        difficulty: 3,
+        notes: 'Ab - C - Eb',
+        easyAlts: ['Abmaj7'],
+        voicings: [
+          { label: '四格封閉大橫按', frets: [4, 6, 6, 5, 4, 4], fingers: [1, 3, 4, 2, 1, 1], barre: { fret: 4, from: 1, to: 6 } },
+          { label: '簡易高音四弦', frets: [-1, -1, 6, 5, 4, 4], fingers: [0, 0, 3, 2, 1, 1], barre: { fret: 4, from: 1, to: 2 } }
+        ]
+      },
+      'Abmaj7': {
+        difficulty: 2,
+        notes: 'Ab - C - Eb - G',
+        easyAlts: ['Fm7'],
+        voicings: [
+          { label: '簡易四弦按法', frets: [-1, -1, 1, 1, 1, 3], fingers: [0, 0, 1, 1, 1, 4], barre: { fret: 1, from: 2, to: 4 } }
+        ]
+      },
+      'G#m': {
+        difficulty: 3,
+        notes: 'G# - B - D#',
+        easyAlts: ['G#m7'],
+        voicings: [
+          { label: '四格封閉標準按法', frets: [4, 6, 6, 4, 4, 4], fingers: [1, 3, 4, 1, 1, 1], barre: { fret: 4, from: 1, to: 6 } },
+          { label: '簡易高音四弦', frets: [-1, -1, 6, 4, 4, 4], fingers: [0, 0, 3, 1, 1, 1], barre: { fret: 4, from: 1, to: 3 } }
+        ]
+      },
+      'G#m7': {
+        difficulty: 2,
+        notes: 'G# - B - D# - F#',
+        easyAlts: ['Emaj7'],
+        voicings: [
+          { label: '簡易高音四弦小橫按', frets: [-1, -1, 4, 4, 4, 4], fingers: [0, 0, 1, 1, 1, 1], barre: { fret: 4, from: 1, to: 4 } }
+        ]
+      },
+      'A': {
+        difficulty: 1,
+        notes: 'A - C# - E',
+        easyAlts: ['Asus2', 'A7'],
+        voicings: [
+          { label: '標準開放按法', frets: [-1, 0, 2, 2, 2, 0], fingers: [0, 0, 1, 2, 3, 0] },
+          { label: '極簡兩指開放 (Asus2)', frets: [-1, 0, 2, 2, 0, 0], fingers: [0, 0, 1, 2, 0, 0] }
+        ]
+      },
+      'Asus2': {
+        difficulty: 1,
+        notes: 'A - B - E',
+        easyAlts: ['A'],
+        voicings: [
+          { label: '極簡兩指開放', frets: [-1, 0, 2, 2, 0, 0], fingers: [0, 0, 1, 2, 0, 0] }
+        ]
+      },
+      'Asus4': {
+        difficulty: 1,
+        notes: 'A - D - E',
+        easyAlts: ['A'],
+        voicings: [
+          { label: '標準開放按法', frets: [-1, 0, 2, 2, 3, 0], fingers: [0, 0, 1, 2, 3, 0] }
+        ]
+      },
+      'A7': {
+        difficulty: 1,
+        notes: 'A - C# - E - G',
+        easyAlts: ['A'],
+        voicings: [
+          { label: '極簡兩指開放', frets: [-1, 0, 2, 0, 2, 0], fingers: [0, 0, 2, 0, 3, 0] }
+        ]
+      },
+      'Am': {
+        difficulty: 1,
+        notes: 'A - C - E',
+        easyAlts: ['Am7'],
+        voicings: [
+          { label: '標準開放按法', frets: [-1, 0, 2, 2, 1, 0], fingers: [0, 0, 2, 3, 1, 0] }
+        ]
+      },
+      'Am7': {
+        difficulty: 1,
+        notes: 'A - C - E - G',
+        easyAlts: ['Am'],
+        voicings: [
+          { label: '極簡兩指開放', frets: [-1, 0, 2, 0, 1, 0], fingers: [0, 0, 2, 0, 1, 0] }
+        ]
+      },
+      'Bb': {
+        difficulty: 3,
+        notes: 'Bb - D - F',
+        easyAlts: ['Bbmaj7'],
+        voicings: [
+          { label: '標準一格封閉', frets: [-1, 1, 3, 3, 3, 1], fingers: [0, 1, 2, 3, 4, 1], barre: { fret: 1, from: 1, to: 5 } },
+          { label: '免大橫按簡易四弦', frets: [-1, -1, 3, 3, 3, 1], fingers: [0, 0, 2, 3, 4, 1] },
+          { label: '開放一弦替代 (Bbmaj7)', frets: [-1, -1, 3, 2, 3, 0], fingers: [0, 0, 2, 1, 3, 0] }
+        ]
+      },
+      'Bbmaj7': {
+        difficulty: 1,
+        notes: 'Bb - D - F - A',
+        easyAlts: ['Gm7', 'Dm7'],
+        voicings: [
+          { label: '簡易開放三指版', frets: [-1, -1, 3, 2, 3, 0], fingers: [0, 0, 2, 1, 3, 0] },
+          { label: '五弦溫潤按法', frets: [-1, 1, 3, 2, 3, 1], fingers: [0, 1, 3, 2, 4, 1], barre: { fret: 1, from: 1, to: 5 } }
+        ]
+      },
+      'B': {
+        difficulty: 3,
+        notes: 'B - D# - F#',
+        easyAlts: ['Bsus4', 'B7'],
+        voicings: [
+          { label: '標準二格封閉', frets: [-1, 2, 4, 4, 4, 2], fingers: [0, 1, 2, 3, 4, 1], barre: { fret: 2, from: 1, to: 5 } },
+          { label: '開放高音替代 (Bsus4)', frets: [-1, 2, 4, 4, 0, 0], fingers: [0, 1, 3, 4, 0, 0] }
+        ]
+      },
+      'Bsus4': {
+        difficulty: 1,
+        notes: 'B - E - F#',
+        easyAlts: ['B7', 'E'],
+        voicings: [
+          { label: '開放一二弦好按版', frets: [-1, 2, 4, 4, 0, 0], fingers: [0, 1, 3, 4, 0, 0] }
+        ]
+      },
+      'B7': {
+        difficulty: 1,
+        notes: 'B - D# - F# - A',
+        easyAlts: ['Bsus4'],
+        voicings: [
+          { label: '標準開放不橫按', frets: [-1, 2, 1, 2, 0, 2], fingers: [0, 2, 1, 3, 0, 4] }
+        ]
+      },
+      'Bm': {
+        difficulty: 3,
+        notes: 'B - D - F#',
+        easyAlts: ['Bm7', 'D'],
+        voicings: [
+          { label: '標準二格封閉 (大橫按)', frets: [-1, 2, 4, 4, 3, 2], fingers: [0, 1, 3, 4, 2, 1], barre: { fret: 2, from: 1, to: 5 } },
+          { label: '免橫按簡易四弦', frets: [-1, -1, 4, 4, 3, 2], fingers: [0, 0, 3, 4, 2, 1] },
+          { label: '開放簡易替代 (Bm7)', frets: [-1, 2, 0, 2, 0, 2], fingers: [0, 1, 0, 2, 0, 3] }
+        ]
+      },
+      'Bm7': {
+        difficulty: 1,
+        notes: 'B - D - F# - A',
+        easyAlts: ['D', 'G'],
+        voicings: [
+          { label: '新手救星三指開放', frets: [-1, 2, 0, 2, 0, 2], fingers: [0, 1, 0, 2, 0, 3] },
+          { label: '民謠甜美開放版', frets: [-1, 2, 4, 2, 3, 0], fingers: [0, 1, 3, 1, 2, 0] }
+        ]
+      }
+    };
+
+    // Slash Chords Support
+    const SLASH_CHORD_VOICINGS = {
+      'C/G':  { frets: [3, 3, 2, 0, 1, 0], fingers: [3, 4, 2, 0, 1, 0], notes: 'G - C - E - G', difficulty: 1 },
+      'G/B':  { frets: [-1, 2, 0, 0, 3, 3], fingers: [0, 1, 0, 0, 3, 4], notes: 'B - D - G', difficulty: 1 },
+      'D/F#': { frets: [2, 0, 0, 2, 3, 2], fingers: [1, 0, 0, 2, 4, 3], notes: 'F# - A - D - F#', difficulty: 2 },
+      'Am/G': { frets: [3, 0, 2, 2, 1, 0], fingers: [3, 0, 2, 2, 1, 0], notes: 'G - A - C - E', difficulty: 1 }
+    };
+
+    // Default Beginner Simplification Map when "一鍵簡化" is ON
+    const DEFAULT_EASY_SUB_MAP = {
+      'F': 'Fmaj7',
+      'Bm': 'Bm7',
+      'Bb': 'Bbmaj7',
+      'A#': 'Bbmaj7',
+      'F#m': 'F#m7',
+      'Gb': 'F#maj7',
+      'F#': 'F#maj7',
+      'C#m': 'C#m7',
+      'Dbm': 'C#m7',
+      'Gm': 'Gm7',
+      'B': 'Bsus4',
+      'Cm': 'Cm7',
+      'C#': 'Dbmaj7',
+      'Db': 'Dbmaj7',
+      'Eb': 'Ebmaj7',
+      'D#': 'Ebmaj7',
+      'Ab': 'Abmaj7',
+      'G#': 'Abmaj7'
+    };
+
+    // =========================================================
+    // 2. 內建範例歌曲庫
+    // =========================================================
+    const BUILTIN_SONGS = [
+      {
+        id: 'song-canon-lyric',
+        title: '卡農青春民謠練習曲 (Canon in C 經典和弦進行)',
+        subtitle: 'C大調萬用進行 ・ 含 F 大橫按，適合體驗「一鍵簡化」與「轉調」',
+        key: 'C',
+        timeSig: '4/4',
+        bpm: 84,
+        content: `[C]陽光灑落[G]在窗台邊 [Am]微風輕輕[Em]吹過耳邊
+[F]拿起吉他[C]撥動琴弦 [F]唱出心裡[G]那段想念
+
+[C]就算偶爾[G]指法太難 [Am]封閉和弦[Em]按不完全
+[F]換個簡單[C]替代指法 [Dm7]音樂依然[G]溫暖心田
+
+[F]不用害[G]怕大橫[Em]按的考[Am]驗
+[Dm7]夾上 Capo [G]或把 F 變[C]成 Fmaj7
+[F]自由調[G]整屬於[Em]你的和[Am]弦
+[Dm7]彈出最自[G7]在的每一[C]天`
+      },
+      {
+        id: 'song-ode-to-joy',
+        title: '歡樂頌 Ode to Joy (貝多芬民謠吉他改編)',
+        subtitle: 'D大調經典曲 ・ 含 Bm 與 F#m 封閉和弦，推薦測試「Capo 夾第 2 格轉 C 調指法」',
+        key: 'D',
+        timeSig: '4/4',
+        bpm: 96,
+        content: `[D]青天高高[A]白雲飄飄 [Bm]太陽當空[F#m]在微笑
+[G]枝頭小鳥[D]吱吱在叫 [Em]魚兒水面[A]任跳躍
+
+[D]花兒盛開[A]草兒彎腰 [Bm]蝴蝶飛舞[F#m]樂逍遙
+[G]我們一起[D]大聲歌唱 [Em]幸福快樂[A]湧心[D]頭`
+      },
+      {
+        id: 'song-happy-birthday',
+        title: '生日快樂歌 Happy Birthday (F大調溫馨版)',
+        subtitle: 'F大調經典 ・ 含 F 與 Bb 兩個封閉和弦，可試算「Capo 夾第 5 格」秒變全開放 C 調',
+        key: 'F',
+        timeSig: '3/4',
+        bpm: 100,
+        content: `祝你[F]生日快[C]樂 祝你[C7]生日快[F]樂
+祝你[F]生日快[Bb]樂 祝你[F]永遠[C]快[F]樂
+
+Happy [F]Birthday to [C]you, Happy [C7]Birthday to [F]you
+Happy [F]Birthday dear [Bb]my friend, Happy [F]Birthday [C]to [F]you`
+      },
+      {
+        id: 'song-amazing-grace',
+        title: '奇異恩典 Amazing Grace (G大調木吉他指彈版)',
+        subtitle: 'G大調經典民謠 ・ 開放和弦為主，包含 Bm 可測試替換為 Bm7',
+        key: 'G',
+        timeSig: '3/4',
+        bpm: 78,
+        content: `[G]奇異恩[G7]典 何[C]等甘[G]甜
+我[G]罪已[Bm]得赦[Em]免 [D]
+前[G]我失[G7]喪 今[C]被尋[G]回
+瞎[Em]眼今[D]得看[G]見`
+      },
+      {
+        id: 'song-twinkle',
+        title: '小星星 Twinkle Twinkle Little Star (初學入門)',
+        subtitle: 'C大調經典兒歌 ・ 適合練習 C / F / G7 轉換與節拍器對拍',
+        key: 'C',
+        timeSig: '4/4',
+        bpm: 88,
+        content: `[C]一閃一閃[F]亮晶[C]晶 [F]滿天[C]都是[G7]小星[C]星
+[C]掛在[F]天上[C]放光[G]明 [C]好像[F]許多[C]小眼[G]睛
+[C]一閃一閃[F]亮晶[C]晶 [F]滿天[C]都是[G7]小星[C]星`
+      }
+    ];
+
+    // =========================================================
+    // 3. 應用程式狀態 (State)
+    // =========================================================
+    const state = {
+      songs: [],
+      currentSongId: 'song-canon-lyric',
+      transposeSemitones: 0,
+      capoFret: 0,
+      useFlats: false,
+      easyMode: false,
+      customSubs: {
+        'F': 'Fmaj7'
+      },
+      voicingSelections: {}, // chordName -> voicingIndex
+      selectedChord: 'C',
+      displayMode: 'over',
+      fontSize: 16,
+      isAutoScrolling: false,
+      scrollTimer: null,
+      isMetronomeOn: false,
+      metroTimer: null,
+      bpm: 84
+    };
+
+    let audioCtx = null;
+    function getAudioCtx() {
+      if (!audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) {
+          audioCtx = new AudioContextClass();
+        }
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      return audioCtx;
+    }
+
+    // =========================================================
+    // 4. 樂理、和弦查詢（含同音異名與明確 Fallback）與 Capo 評估
+    // =========================================================
+    function parseChord(chordStr) {
+      if (!chordStr) return null;
+      const cleaned = chordStr.trim();
+      const match = cleaned.match(/^([A-G][#b]?)(.*?)(?:\/([A-G][#b]?))?$/);
+      if (!match) return null;
+      return {
+        root: match[1],
+        suffix: match[2] || '',
+        bass: match[3] || null
+      };
+    }
+
+    function transposeNote(note, semitones, preferFlats) {
+      const idx = NOTE_TO_INDEX[note];
+      if (idx === undefined) return note;
+      const newIdx = ((idx + semitones) % 12 + 12) % 12;
+      return preferFlats ? NOTES_FLAT[newIdx] : NOTES_SHARP[newIdx];
+    }
+
+    function transposeChord(chordStr, semitones, preferFlats) {
+      const parsed = parseChord(chordStr);
+      if (!parsed) return chordStr;
+      const newRoot = transposeNote(parsed.root, semitones, preferFlats);
+      const newBass = parsed.bass ? '/' + transposeNote(parsed.bass, semitones, preferFlats) : '';
+      return newRoot + parsed.suffix + newBass;
+    }
+
+    // Apply substitution rules for a given raw shape (used by both Sheet rendering and Capo Advisor)
+    function applySubstitutionForShape(rawShape) {
+      if (state.customSubs[rawShape]) {
+        return {
+          rawShape,
+          finalChord: state.customSubs[rawShape],
+          wasSubstituted: true,
+          subReason: '自訂規則'
+        };
+      }
+      if (state.easyMode && DEFAULT_EASY_SUB_MAP[rawShape]) {
+        return {
+          rawShape,
+          finalChord: DEFAULT_EASY_SUB_MAP[rawShape],
+          wasSubstituted: true,
+          subReason: '一鍵簡化'
+        };
+      }
+      return {
+        rawShape,
+        finalChord: rawShape,
+        wasSubstituted: false,
+        subReason: ''
+      };
+    }
+
+    function getPlayedChordShape(origChordStr) {
+      const netShift = state.transposeSemitones - state.capoFret;
+      const rawShape = transposeChord(origChordStr, netShift, state.useFlats);
+      const subResult = applySubstitutionForShape(rawShape);
+      return {
+        original: origChordStr,
+        ...subResult
+      };
+    }
+
+    function extractRawChords(content) {
+      const regex = /\[([A-G][#b]?[^\]\s]*)\]/g;
+      const found = [];
+      let m;
+      while ((m = regex.exec(content)) !== null) {
+        found.push(m[1]);
+      }
+      return found;
+    }
+
+    /**
+     * Looks up chord data with full enharmonic equivalence (e.g. Db <-> C#)
+     * and returns explicit fallback metadata if an uncommon chord is approximated.
+     */
+    function getChordData(chordName) {
+      if (CHORD_DB[chordName]) {
+        return { ...CHORD_DB[chordName], isFallback: false, matchedChord: chordName };
+      }
+
+      if (SLASH_CHORD_VOICINGS[chordName]) {
+        const sc = SLASH_CHORD_VOICINGS[chordName];
+        return {
+          difficulty: sc.difficulty,
+          notes: sc.notes,
+          easyAlts: [chordName.split('/')[0]],
+          voicings: [{ label: '標準轉位按法', frets: sc.frets, fingers: sc.fingers }],
+          isFallback: false,
+          matchedChord: chordName
+        };
+      }
+
+      const parsed = parseChord(chordName);
+      if (!parsed) {
+        return {
+          ...CHORD_DB['C'],
+          isFallback: true,
+          requestedChord: chordName,
+          matchedChord: 'C'
+        };
+      }
+
+      // 1. Check exact enharmonic equivalent (e.g., Db -> C#, Ebm -> D#m, Gbmaj7 -> F#maj7)
+      const altRoot = ENHARMONIC_EQUIV[parsed.root];
+      if (altRoot) {
+        const enharmonicChord = altRoot + parsed.suffix;
+        if (CHORD_DB[enharmonicChord]) {
+          return {
+            ...CHORD_DB[enharmonicChord],
+            isFallback: false,
+            matchedChord: enharmonicChord
+          };
+        }
+      }
+
+      // 2. If slash chord not in SLASH_CHORD_VOICINGS, try base triad/seventh without bass
+      if (parsed.bass) {
+        const withoutBass = parsed.root + parsed.suffix;
+        const baseLookup = getChordData(withoutBass);
+        return {
+          ...baseLookup,
+          isFallback: true,
+          requestedChord: chordName,
+          matchedChord: baseLookup.matchedChord
+        };
+      }
+
+      // 3. Approximate uncommon suffix (e.g. Cmaj9 -> Cmaj7 or C, F#m9 -> F#m7 or F#m)
+      const isMinor = parsed.suffix.startsWith('m') && !parsed.suffix.startsWith('maj');
+      const candidates = [
+        parsed.root + (isMinor ? 'm7' : 'maj7'),
+        parsed.root + (isMinor ? 'm' : ''),
+        (altRoot || parsed.root) + (isMinor ? 'm7' : 'maj7'),
+        (altRoot || parsed.root) + (isMinor ? 'm' : '')
+      ];
+
+      for (const cand of candidates) {
+        if (CHORD_DB[cand]) {
+          return {
+            ...CHORD_DB[cand],
+            isFallback: true,
+            requestedChord: chordName,
+            matchedChord: cand
+          };
+        }
+      }
+
+      return {
+        ...CHORD_DB['C'],
+        isFallback: true,
+        requestedChord: chordName,
+        matchedChord: 'C'
+      };
+    }
+
+    /**
+     * Unified difficulty evaluator used by both the current Capo status badge and the Smart Capo Advisor.
+     */
+    function evaluateCapoOption(rawChords, capo) {
+      const netShift = state.transposeSemitones - capo;
+      const uniqueRawShapes = [...new Set(rawChords.map(c => transposeChord(c, netShift, state.useFlats)))];
+
+      // Evaluate effective chords under current substitution settings AND raw un-substituted difficulty
+      const effectiveChords = uniqueRawShapes.map(rs => applySubstitutionForShape(rs).finalChord);
+      const uniqueEffective = [...new Set(effectiveChords)];
+
+      const hardChords = [];
+      let score = 0;
+
+      uniqueEffective.forEach(ch => {
+        const data = getChordData(ch);
+        const vIdx = state.voicingSelections[ch] || 0;
+        // If user selected an easier voicing on a hard chord, reflect that in difficulty
+        const effectiveDiff = (data.difficulty >= 3 && vIdx > 0) ? 2 : data.difficulty;
+        if (effectiveDiff >= 3) {
+          hardChords.push(ch);
+          score += 14;
+        } else if (effectiveDiff === 2) {
+          score += 4;
+        } else {
+          score += 1;
+        }
+      });
+
+      // Also add small weight for raw shapes before substitution so Capo 5 (natural C) still ranks higher than Capo 0 (F simplified to Fmaj7)
+      uniqueRawShapes.forEach(rs => {
+        const rawData = getChordData(rs);
+        if (rawData.difficulty >= 3) score += 2.5;
+      });
+
+      const totalPenalty = score + capo * 0.25;
+      const sampleKey = transposeNote(getCurrentSong().key, netShift, state.useFlats);
+
+      return {
+        capo,
+        hardChords,
+        hardCount: hardChords.length,
+        totalPenalty,
+        sampleKey,
+        shapesPreview: uniqueEffective.slice(0, 4).join(', ')
+      };
+    }
+
+    function calculateCapoSuggestions(rawChords) {
+      if (!rawChords.length) return [];
+      const results = [];
+      for (let capo = 0; capo <= 9; capo++) {
+        results.push(evaluateCapoOption(rawChords, capo));
+      }
+      results.sort((a, b) => a.totalPenalty - b.totalPenalty);
+      return results.slice(0, 3);
+    }
+
+    // =========================================================
+    // 5. 真實質感指板圖 SVG 產生器 (含可獨立撥動的 6 條 <path> 琴弦)
+    // =========================================================
+    function renderChordSvg(chordName, size = 'small') {
+      const data = getChordData(chordName);
+      const voicingIdx = state.voicingSelections[chordName] || 0;
+      const voicing = data.voicings[Math.min(voicingIdx, data.voicings.length - 1)];
+
+      const isLarge = size === 'large';
+      const width = isLarge ? 156 : 104;
+      const height = isLarge ? 186 : 126;
+      const padLeft = isLarge ? 28 : 18;
+      const padRight = isLarge ? 18 : 12;
+      const padTop = isLarge ? 28 : 20;
+      const padBottom = isLarge ? 18 : 12;
+
+      const gridW = width - padLeft - padRight;
+      const gridH = height - padTop - padBottom;
+      const stringGap = gridW / 5;
+      const fretGap = gridH / 4;
+
+      const activeFrets = voicing.frets.filter(f => f > 0);
+      const maxFret = activeFrets.length ? Math.max(...activeFrets) : 1;
+      const minFret = activeFrets.length ? Math.min(...activeFrets) : 1;
+      const baseFret = maxFret <= 4 ? 1 : minFret;
+
+      let svg = `<svg viewBox="0 0 ${width} ${height}" class="w-full h-full select-none overflow-visible" data-chord-svg="${chordName}">`;
+
+      // 1. Dark Rosewood Fretboard Background with subtle rounded edge
+      svg += `<rect x="${padLeft - 3}" y="${padTop}" width="${gridW + 6}" height="${gridH}" rx="2" fill="url(#fretboardWood)" stroke="rgba(236,228,214,0.12)" stroke-width="0.8" />`;
+
+      // 2. Pearloid Inlay Dots on Fretboard (Frets 3, 5, 7, 9, 12)
+      for (let f = 1; f <= 4; f++) {
+        const actualFret = baseFret + f - 1;
+        const centerY = padTop + (f - 0.5) * fretGap;
+        const centerX = padLeft + gridW / 2;
+        const dotR = isLarge ? 3.2 : 2.1;
+        if ([3, 5, 7, 9].includes(actualFret)) {
+          svg += `<circle cx="${centerX}" cy="${centerY}" r="${dotR}" fill="rgba(236, 228, 214, 0.13)" />`;
+        } else if (actualFret === 12) {
+          svg += `<circle cx="${padLeft + stringGap * 1.5}" cy="${centerY}" r="${dotR}" fill="rgba(236, 228, 214, 0.13)" />`;
+          svg += `<circle cx="${padLeft + stringGap * 3.5}" cy="${centerY}" r="${dotR}" fill="rgba(236, 228, 214, 0.13)" />`;
+        }
+      }
+
+      // 3. Bone Nut (if baseFret === 1) or Base Fret Indicator
+      if (baseFret === 1) {
+        const nutH = isLarge ? 4.5 : 3.2;
+        svg += `<rect x="${padLeft - 3}" y="${padTop - nutH / 2}" width="${gridW + 6}" height="${nutH}" rx="1" fill="url(#boneNut)" />`;
+      } else {
+        svg += `<text x="${padLeft - (isLarge ? 8 : 5)}" y="${padTop + fretGap * 0.62}" fill="#d4a24c" font-size="${isLarge ? 11 : 8.5}" font-weight="600" text-anchor="end" font-family="JetBrains Mono, monospace">${baseFret}fr</text>`;
+      }
+
+      // 4. Metallic Fret Wires
+      for (let f = 1; f <= 4; f++) {
+        const y = padTop + f * fretGap;
+        svg += `<line x1="${padLeft - 2}" y1="${y}" x2="${padLeft + gridW + 2}" y2="${y}" stroke="#6e6254" stroke-width="${isLarge ? 1.5 : 1.1}" />`;
+      }
+
+      // 5. Six Guitar Strings as <path> elements so each string can vibrate via quadratic Bezier!
+      // Bass strings (s=0,1,2) have warm bronze tint & thicker gauge; treble strings (s=3,4,5) have silver steel tint
+      const stringColors = ['#c49a62', '#c9a36f', '#d1b080', '#d8cfc2', '#e2dbd0', '#ece4d6'];
+      const stringWidths = isLarge
+        ? [2.1, 1.8, 1.5, 1.25, 1.05, 0.85]
+        : [1.55, 1.35, 1.15, 0.98, 0.82, 0.7];
+
+      for (let s = 0; s < 6; s++) {
+        const x = +(padLeft + s * stringGap).toFixed(2);
+        const y1 = padTop;
+        const y2 = padTop + gridH;
+        const midY = (y1 + y2) / 2;
+        const fret = voicing.frets[s];
+        svg += `<path class="fret-string" data-string-index="${s}" data-fret="${fret}" data-orientation="vertical" data-rest-x="${x}" data-y1="${y1}" data-y2="${y2}" d="M ${x} ${y1} Q ${x} ${midY} ${x} ${y2}" stroke="${stringColors[s]}" stroke-width="${stringWidths[s]}" fill="none" />`;
+      }
+
+      // 6. Barre Chord Indicator Bar
+      if (voicing.barre) {
+        const relFret = voicing.barre.fret - baseFret + 1;
+        if (relFret >= 1 && relFret <= 4) {
+          const y = padTop + (relFret - 0.5) * fretGap;
+          const xStart = padLeft + (6 - voicing.barre.to) * stringGap;
+          const xEnd = padLeft + (6 - voicing.barre.from) * stringGap;
+          const barH = isLarge ? 12.5 : 8.2;
+          svg += `<rect x="${xStart - 4}" y="${y - barH / 2}" width="${xEnd - xStart + 8}" height="${barH}" rx="${barH / 2}" fill="#d4a24c" opacity="0.92" filter="url(#brassGlow)" />`;
+        }
+      }
+
+      // 7. Finger Dots (with warm brass glow), Open 'O', Mute 'X'
+      const dotRadius = isLarge ? 7.6 : 5.1;
+      for (let s = 0; s < 6; s++) {
+        const fret = voicing.frets[s];
+        const finger = voicing.fingers ? voicing.fingers[s] : 0;
+        const x = padLeft + s * stringGap;
+
+        if (fret === -1) {
+          svg += `<text x="${x}" y="${padTop - (isLarge ? 7 : 5)}" fill="#a67c72" font-size="${isLarge ? 10.5 : 8}" font-weight="600" text-anchor="middle">✕</text>`;
+        } else if (fret === 0) {
+          svg += `<circle cx="${x}" cy="${padTop - (isLarge ? 10 : 7)}" r="${isLarge ? 3.8 : 2.6}" fill="none" stroke="#8ab8a4" stroke-width="1.5" />`;
+        } else {
+          const relFret = fret - baseFret + 1;
+          const clampedFret = Math.max(1, Math.min(4, relFret));
+          const y = padTop + (clampedFret - 0.5) * fretGap;
+          svg += `<circle cx="${x}" cy="${y}" r="${dotRadius}" fill="#d4a24c" stroke="#ece4d6" stroke-width="0.6" filter="url(#brassGlow)" />`;
+          if (finger > 0) {
+            svg += `<text x="${x}" y="${y + (isLarge ? 3.4 : 2.5)}" fill="#12100e" font-size="${isLarge ? 9.5 : 6.8}" font-weight="700" text-anchor="middle" font-family="JetBrains Mono, monospace">${finger}</text>`;
+          }
+        }
+      }
+
+      svg += `</svg>`;
+      return svg;
+    }
+
+    /**
+     * Triggers sequential 6-string vibration (40ms stagger) on a fretboard SVG container.
+     * In the large inspector, each string vibrates with pitch-dependent frequency & amplitude.
+     */
+    function animateFretboardStrings(svgContainerEl, isLargeInspector = false) {
+      if (!svgContainerEl) return;
+      const stringPaths = svgContainerEl.querySelectorAll('path.fret-string');
+      let delayMs = 0;
+
+      stringPaths.forEach((pathEl, idx) => {
+        const fret = parseInt(pathEl.getAttribute('data-fret'), 10);
+        if (fret === -1) return; // Muted string does not vibrate
+
+        // Pitch-based amplitude & frequency (Low E = larger amplitude & lower freq; High E = tighter amplitude & higher freq)
+        const amp = isLargeInspector ? (6.2 - idx * 0.58) : (3.8 - idx * 0.35);
+        const freq = isLargeInspector ? (30 + idx * 5.8 + Math.max(0, fret) * 0.9) : (36 + idx * 4.5);
+        const decay = isLargeInspector ? (2.4 + idx * 0.22) : 3.1;
+
+        setTimeout(() => {
+          pluck(pathEl, {
+            amplitude: amp,
+            frequency: freq,
+            decay: decay,
+            highlightColor: '#e6bc70'
+          });
+        }, delayMs);
+
+        delayMs += 40; // 40ms stagger matching the audio strum!
+      });
+    }
+
+    // =========================================================
+    // 6. Web Audio 吉他刷弦合成器與節拍器音效
+    // =========================================================
+    function strumChord(chordName, triggerVisuals = true) {
+      const data = getChordData(chordName);
+      const voicingIdx = state.voicingSelections[chordName] || 0;
+      const voicing = data.voicings[Math.min(voicingIdx, data.voicings.length - 1)];
+
+      const ctx = getAudioCtx();
+      if (ctx) {
+        const now = ctx.currentTime;
+        let stringDelay = 0;
+
+        for (let s = 0; s < 6; s++) {
+          const fret = voicing.frets[s];
+          if (fret === -1) continue;
+
+          const midiNote = OPEN_STRING_MIDI[s] + fret + state.capoFret;
+          const freq = 440 * Math.pow(2, (midiNote - 69) / 12);
+
+          playPluckedString(ctx, freq, now + stringDelay);
+          stringDelay += 0.04; // 40ms stagger synchronized with SVG string animation
+        }
+      }
+
+      if (triggerVisuals) {
+        // Animate the matching card in the top deck AND the large inspector without destroying their DOM
+        const deckCardSvg = document.querySelector(`#songChordsDeck [data-chord-card="${CSS.escape(chordName)}"]`);
+        if (deckCardSvg) {
+          animateFretboardStrings(deckCardSvg, false);
+        }
+        const inspectorContainer = document.getElementById('inspectorSvgContainer');
+        if (inspectorContainer) {
+          animateFretboardStrings(inspectorContainer, true);
+        }
+      }
+    }
+
+    function playPluckedString(ctx, freq, startTime) {
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const filter = ctx.createBiquadFilter();
+      const gain = ctx.createGain();
+
+      osc1.type = 'triangle';
+      osc2.type = 'sawtooth';
+      osc1.frequency.setValueAtTime(freq, startTime);
+      osc2.frequency.setValueAtTime(freq * 2, startTime);
+
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(freq * 4.5, startTime);
+      filter.frequency.exponentialRampToValueAtTime(freq * 1.15, startTime + 1.45);
+
+      gain.gain.setValueAtTime(0.001, startTime);
+      gain.gain.linearRampToValueAtTime(0.14, startTime + 0.014);
+      gain.gain.exponentialRampToValueAtTime(0.0008, startTime + 1.85);
+
+      osc1.connect(filter);
+      osc2.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc1.start(startTime);
+      osc2.start(startTime);
+      osc1.stop(startTime + 1.9);
+      osc2.stop(startTime + 1.9);
+    }
+
+    function playMetronomeClick(isDownbeat) {
+      const ctx = getAudioCtx();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(isDownbeat ? 920 : 640, now);
+      gain.gain.setValueAtTime(0.15, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.055);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.06);
+    }
+
+    // =========================================================
+    // 7. 畫面渲染與局部更新邏輯 (避免重建正在震動的 SVG)
+    // =========================================================
+    function getCurrentSong() {
+      return state.songs.find(s => s.id === state.currentSongId) || state.songs[0];
+    }
+
+    function showToast(msg) {
+      const box = document.getElementById('toastBox');
+      box.textContent = msg;
+      box.classList.remove('hidden');
+      clearTimeout(box._timer);
+      box._timer = setTimeout(() => {
+        box.classList.add('hidden');
+      }, 2600);
+    }
+
+    function loadSongsFromStorage() {
+      let customSongs = [];
+      try {
+        const saved = localStorage.getItem('chordflow_custom_songs_v1');
+        if (saved) customSongs = JSON.parse(saved);
+      } catch (e) {
+        customSongs = [];
+      }
+      state.songs = [...BUILTIN_SONGS, ...customSongs];
+    }
+
+    function saveCustomSongsToStorage() {
+      const customOnly = state.songs.filter(s => s.isCustom);
+      try {
+        localStorage.setItem('chordflow_custom_songs_v1', JSON.stringify(customOnly));
+      } catch (e) {
+        // Ignore storage error in restricted sandbox
+      }
+    }
+
+    /**
+     * Selecting a chord updates active card highlights & the inspector, then strums & animates strings
+     * WITHOUT calling renderAll() so vibrating SVG elements in the deck are never destroyed mid-animation.
+     */
+    function selectAndStrumChord(chordName) {
+      state.selectedChord = chordName;
+      updateDeckActiveHighlight();
+      renderInspector();
+      strumChord(chordName, true);
+    }
+
+    function updateDeckActiveHighlight() {
+      const cards = document.querySelectorAll('#songChordsDeck [data-chord-card]');
+      cards.forEach(card => {
+        const ch = card.getAttribute('data-chord-card');
+        const isSelected = ch === state.selectedChord;
+        card.className = `flex-shrink-0 w-28 rounded-xl p-2.5 border transition duration-200 ease-out flex flex-col items-center text-center group ${
+          isSelected
+            ? 'bg-[#d4a24c]/12 border-[#d4a24c] shadow-md'
+            : 'bg-[#12100e]/75 border-[#ece4d6]/10 hover:border-[#d4a24c]/40'
+        }`;
+        const titleEl = card.querySelector('.card-chord-title');
+        if (titleEl) {
+          titleEl.className = `card-chord-title text-sm font-bold mono-chord ${
+            isSelected ? 'text-[#d4a24c]' : 'text-[#ece4d6] group-hover:text-[#e6bc70]'
+          }`;
+        }
+      });
+    }
+
+    function renderSongSelector() {
+      const select = document.getElementById('selectSong');
+      select.innerHTML = '';
+      state.songs.forEach(song => {
+        const opt = document.createElement('option');
+        opt.value = song.id;
+        opt.textContent = (song.isCustom ? '★ [自訂] ' : '♩ ') + song.title;
+        if (song.id === state.currentSongId) opt.selected = true;
+        select.appendChild(opt);
+      });
+    }
+
+    function renderSubstitutionRules() {
+      const container = document.getElementById('subRulesContainer');
+      container.innerHTML = '';
+
+      const combinedEntries = [];
+      Object.entries(state.customSubs).forEach(([from, to]) => {
+        combinedEntries.push({ from, to, type: 'custom' });
+      });
+
+      if (state.easyMode) {
+        Object.entries(DEFAULT_EASY_SUB_MAP).forEach(([from, to]) => {
+          if (!state.customSubs[from]) {
+            combinedEntries.push({ from, to, type: 'easy' });
+          }
+        });
+      }
+
+      if (combinedEntries.length === 0) {
+        container.innerHTML = `<div class="text-xs text-[#756c60] py-1">目前無啟用中的替換規則（可開啟上方「一鍵簡化」或手動新增）</div>`;
+        return;
+      }
+
+      combinedEntries.forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'flex items-center justify-between bg-[#14120f] border border-[#ece4d6]/08 rounded-lg px-2.5 py-1.5 text-xs';
+        const badge = item.type === 'easy'
+          ? `<span class="px-1.5 py-0.5 rounded bg-[#6d9b87]/15 text-[#8ab8a4] text-[10px]">一鍵簡化</span>`
+          : `<span class="px-1.5 py-0.5 rounded bg-[#d4a24c]/15 text-[#e6bc70] text-[10px]">自訂規則</span>`;
+
+        row.innerHTML = `
+          <div class="flex items-center gap-2 mono-chord">
+            <span class="text-[#ece4d6] font-semibold">${item.from}</span>
+            <span class="text-[#756c60]">→</span>
+            <span class="text-[#8ab8a4] font-semibold">${item.to}</span>
+            ${badge}
+          </div>
+        `;
+
+        if (item.type === 'custom') {
+          const delBtn = document.createElement('button');
+          delBtn.type = 'button';
+          delBtn.className = 'text-[#756c60] hover:text-[#e09f9f] px-1.5 py-0.5 font-bold transition-colors';
+          delBtn.textContent = '✕';
+          delBtn.title = '移除此規則';
+          delBtn.addEventListener('click', () => {
+            delete state.customSubs[item.from];
+            renderAll();
+          });
+          row.appendChild(delBtn);
+        }
+        container.appendChild(row);
+      });
+    }
+
+    function renderCapoSuggestions(rawChords) {
+      const suggestions = calculateCapoSuggestions(rawChords);
+      const currentEval = evaluateCapoOption(rawChords, state.capoFret);
+      const listEl = document.getElementById('capoSuggestionsList');
+      const badgeEl = document.getElementById('capoDifficultyBadge');
+      listEl.innerHTML = '';
+
+      // Unified badge status matching evaluateCapoOption
+      if (currentEval.hardCount === 0) {
+        badgeEl.textContent = '目前指法：全開放好按 ★';
+        badgeEl.className = 'text-[11px] px-2 py-0.5 rounded bg-[#6d9b87]/20 text-[#8ab8a4] mono-chord';
+      } else {
+        badgeEl.textContent = `目前含 ${currentEval.hardCount} 個封閉和弦 (${currentEval.hardChords.join(', ')})`;
+        badgeEl.className = 'text-[11px] px-2 py-0.5 rounded bg-[#d4a24c]/20 text-[#e6bc70] mono-chord';
+      }
+
+      suggestions.forEach((sug, idx) => {
+        const isCurrent = sug.capo === state.capoFret;
+        const item = document.createElement('div');
+        item.className = `flex items-center justify-between gap-2 p-2 rounded-lg border text-xs transition ${
+          isCurrent
+            ? 'bg-[#6d9b87]/15 border-[#6d9b87]/45 text-[#ece4d6]'
+            : 'bg-[#12100e]/70 border-[#ece4d6]/08 text-[#a69c8e]'
+        }`;
+
+        const labelText = sug.capo === 0
+          ? `不夾 Capo (${sug.sampleKey} 調指法)`
+          : `夾第 ${sug.capo} 格 (彈 ${sug.sampleKey} 調指法)`;
+        const subText = sug.hardCount === 0 ? '無大橫按' : `${sug.hardCount} 個橫按`;
+
+        item.innerHTML = `
+          <div>
+            <span class="font-medium ${idx === 0 ? 'text-[#8ab8a4]' : 'text-[#ece4d6]'}">${idx === 0 ? '★ 推薦：' : ''}${labelText}</span>
+            <span class="text-[11px] text-[#756c60] ml-1 mono-chord">(${subText}：${sug.shapesPreview})</span>
+          </div>
+        `;
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = isCurrent
+          ? 'studio-btn min-h-[32px] px-2.5 py-1 rounded bg-[#6d9b87] text-[#12100e] font-semibold text-[11px]'
+          : 'studio-btn min-h-[32px] px-2.5 py-1 rounded bg-[#221e19] hover:bg-[#6d9b87] hover:text-[#12100e] text-[#8ab8a4] font-medium text-[11px] border border-[#6d9b87]/30';
+        btn.innerHTML = `
+          <span>${isCurrent ? '已套用' : '套用'}</span>
+          <svg class="btn-string-wrap" viewBox="0 0 100 8" preserveAspectRatio="none">
+            <path class="interactive-string" data-rest-y="4" d="M 0 4 Q 50 4 100 4" stroke="#6d9b87" stroke-opacity="0.45" stroke-width="1" fill="none" />
+          </svg>
+        `;
+        btn.addEventListener('click', () => {
+          pluckButtonString(btn);
+          state.capoFret = sug.capo;
+          document.getElementById('selectCapo').value = String(sug.capo);
+          renderAll();
+          showToast(`已套用 Capo 第 ${sug.capo} 格（使用 ${sug.sampleKey} 調指法）`);
+        });
+
+        item.appendChild(btn);
+        listEl.appendChild(item);
+      });
+    }
+
+    function renderSongChordsDeck(uniqueChordInfos) {
+      const deck = document.getElementById('songChordsDeck');
+      const countBadge = document.getElementById('songChordCountBadge');
+      deck.innerHTML = '';
+      countBadge.textContent = `${uniqueChordInfos.length} 個和弦`;
+
+      uniqueChordInfos.forEach(info => {
+        const chordName = info.finalChord;
+        const isSelected = state.selectedChord === chordName;
+        const data = getChordData(chordName);
+        const vIdx = state.voicingSelections[chordName] || 0;
+        const voicing = data.voicings[Math.min(vIdx, data.voicings.length - 1)];
+
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.setAttribute('data-chord-card', chordName);
+        card.className = `flex-shrink-0 w-28 rounded-xl p-2.5 border transition duration-200 ease-out flex flex-col items-center text-center group ${
+          isSelected
+            ? 'bg-[#d4a24c]/12 border-[#d4a24c] shadow-md'
+            : 'bg-[#12100e]/75 border-[#ece4d6]/10 hover:border-[#d4a24c]/40'
+        }`;
+
+        let subBadge = '';
+        if (info.wasSubstituted) {
+          subBadge = `<span class="text-[10px] px-1.5 py-0.2 rounded bg-[#6d9b87]/20 text-[#8ab8a4] mono-chord mb-0.5">原 ${info.rawShape}</span>`;
+        } else if (data.isFallback) {
+          subBadge = `<span class="text-[10px] px-1.5 py-0.2 rounded bg-[#d4a24c]/20 text-[#e6bc70] mono-chord mb-0.5">近似 ${data.matchedChord}</span>`;
+        } else {
+          subBadge = `<span class="text-[10px] text-[#756c60] mb-0.5">${voicing.label.slice(0, 6)}</span>`;
+        }
+
+        card.innerHTML = `
+          <div class="card-chord-title text-sm font-bold mono-chord ${isSelected ? 'text-[#d4a24c]' : 'text-[#ece4d6] group-hover:text-[#e6bc70]'}">${chordName}</div>
+          ${subBadge}
+          <div class="w-20 h-24 my-0.5">${renderChordSvg(chordName, 'small')}</div>
+          <div class="text-[10px] text-[#a69c8e] group-hover:text-[#d4a24c] transition-colors">
+            撥弦試聽
+          </div>
+        `;
+
+        card.addEventListener('click', () => {
+          selectAndStrumChord(chordName);
+        });
+
+        deck.appendChild(card);
+      });
+    }
+
+    function renderInspector() {
+      const chordName = state.selectedChord || 'C';
+      const data = getChordData(chordName);
+      const vIdx = state.voicingSelections[chordName] || 0;
+      const voicing = data.voicings[Math.min(vIdx, data.voicings.length - 1)];
+
+      document.getElementById('inspectorChordName').textContent = chordName;
+      document.getElementById('inspectorSvgContainer').innerHTML = renderChordSvg(chordName, 'large');
+
+      // Explicit Fallback Notice if chord was approximated
+      const fallbackEl = document.getElementById('inspectorFallbackNotice');
+      if (data.isFallback) {
+        fallbackEl.textContent = `提示：曲庫未收錄「${chordName}」專屬指法，目前顯示同根音近似基礎和弦「${data.matchedChord}」供伴奏代用。`;
+        fallbackEl.classList.remove('hidden');
+      } else {
+        fallbackEl.classList.add('hidden');
+      }
+
+      // Difficulty Tag
+      const diffTag = document.getElementById('inspectorDifficultyTag');
+      if (data.difficulty >= 3 && vIdx === 0) {
+        diffTag.textContent = '封閉橫按 (進階)';
+        diffTag.className = 'text-xs px-2.5 py-0.5 rounded-full bg-[#d4a24c]/15 text-[#e6bc70] border border-[#d4a24c]/35';
+      } else {
+        diffTag.textContent = '開放 / 簡易好按';
+        diffTag.className = 'text-xs px-2.5 py-0.5 rounded-full bg-[#6d9b87]/15 text-[#8ab8a4] border border-[#6d9b87]/35';
+      }
+
+      const fretCode = voicing.frets.map(f => (f === -1 ? 'x' : f)).join('');
+      document.getElementById('inspectorNotesInfo').textContent = `組成音：${data.notes} ｜ 指法代號：${fretCode} (${voicing.label})`;
+
+      const concertSound = transposeChord(chordName, state.capoFret, state.useFlats);
+      document.getElementById('inspectorCapoSoundNote').textContent =
+        state.capoFret > 0 ? `夾 Capo ${state.capoFret} 實際音高：${concertSound}` : `實際發出音高：${concertSound}`;
+
+      // Voicing Switcher Buttons
+      const vContainer = document.getElementById('inspectorVoicingButtons');
+      vContainer.innerHTML = '';
+      data.voicings.forEach((v, idx) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        const active = idx === vIdx;
+        btn.className = `studio-btn px-3.5 py-1.5 rounded-lg text-xs font-medium border ${
+          active
+            ? 'bg-[#d4a24c] text-[#12100e] border-[#d4a24c] font-semibold'
+            : 'bg-[#12100e] hover:bg-[#221e19] text-[#ece4d6] border-[#ece4d6]/12'
+        }`;
+        btn.textContent = `${idx + 1}. ${v.label}`;
+        btn.addEventListener('click', () => {
+          state.voicingSelections[chordName] = idx;
+          renderAll();
+          strumChord(chordName, true);
+        });
+        vContainer.appendChild(btn);
+      });
+
+      // Quick Substitution Buttons
+      const subBtns = document.getElementById('inspectorQuickSubButtons');
+      subBtns.innerHTML = '';
+      const alts = data.easyAlts || ['Cmaj7'];
+      alts.forEach(altChord => {
+        if (altChord === chordName) return;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'studio-btn px-3 py-1.5 rounded-lg bg-[#6d9b87]/15 hover:bg-[#6d9b87] text-[#8ab8a4] hover:text-[#12100e] border border-[#6d9b87]/35 text-xs mono-chord font-semibold';
+        btn.textContent = `將 ${chordName} 換成 ${altChord}`;
+        btn.addEventListener('click', () => {
+          state.customSubs[chordName] = altChord;
+          state.selectedChord = altChord;
+          renderAll();
+          strumChord(altChord, true);
+          showToast(`已將本曲所有 ${chordName} 替換為 ${altChord}`);
+        });
+        subBtns.appendChild(btn);
+      });
+    }
+
+    function renderChordSheet(song) {
+      const container = document.getElementById('sheetContent');
+      container.style.fontSize = `${state.fontSize}px`;
+      container.innerHTML = '';
+
+      document.getElementById('sheetSongTitle').textContent = song.title;
+      document.getElementById('sheetSongSubtitle').textContent = song.subtitle || '自訂吉他譜';
+
+      const concertKey = transposeNote(song.key, state.transposeSemitones, state.useFlats);
+      const playedKeyShape = transposeNote(song.key, state.transposeSemitones - state.capoFret, state.useFlats);
+
+      document.getElementById('displayCurrentKey').textContent = concertKey;
+      document.getElementById('infoOrigKey').textContent = song.key;
+      document.getElementById('infoTimeSig').textContent = song.timeSig || '4/4';
+      document.getElementById('infoSongBpm').textContent = song.bpm || 84;
+
+      const summaryEl = document.getElementById('sheetTransposeSummary');
+      if (state.transposeSemitones === 0 && state.capoFret === 0) {
+        summaryEl.innerHTML = `目前調性：<strong class="text-[#d4a24c] mono-chord">${concertKey} 調</strong>（原調指法，不夾 Capo）`;
+      } else {
+        const semiSign = state.transposeSemitones > 0 ? `+${state.transposeSemitones}` : `${state.transposeSemitones}`;
+        summaryEl.innerHTML = `實際音高：<strong class="text-[#d4a24c] mono-chord">${concertKey} 調</strong> (${semiSign}) ｜ 變調夾：<strong class="text-[#8ab8a4] mono-chord">Capo ${state.capoFret}</strong> ｜ 譜面指法：<strong class="text-[#ece4d6] mono-chord">${playedKeyShape} 調指法</strong>`;
+      }
+
+      const lines = song.content.split('\n');
+      let subCount = 0;
+
+      lines.forEach(line => {
+        if (!line.trim()) {
+          const spacer = document.createElement('div');
+          spacer.className = 'h-5';
+          container.appendChild(spacer);
+          return;
+        }
+
+        const lineEl = document.createElement('div');
+        lineEl.className = 'mb-2.5 flex flex-wrap items-end';
+
+        const parts = line.split(/(\[[A-G][#b]?[^\]\s]*\])/g);
+
+        if (state.displayMode === 'inline') {
+          lineEl.className = 'mb-3 leading-loose';
+          parts.forEach(part => {
+            const m = part.match(/^\[([A-G][#b]?[^\]\s]*)\]$/);
+            if (m) {
+              const info = getPlayedChordShape(m[1]);
+              if (info.wasSubstituted) subCount++;
+              const badge = document.createElement('span');
+              badge.className = `mono-chord chord-token mx-1 px-2 py-0.5 rounded text-sm ${
+                info.wasSubstituted
+                  ? 'bg-[#6d9b87]/18 text-[#8ab8a4] border border-[#6d9b87]/40'
+                  : 'bg-[#d4a24c]/15 text-[#e6bc70] border border-[#d4a24c]/35'
+              }`;
+              badge.innerHTML = info.wasSubstituted
+                ? `<span>[${info.finalChord}</span><span class="text-[10px] opacity-80">⇐${info.rawShape}]</span>`
+                : `[${info.finalChord}]`;
+              badge.addEventListener('click', () => {
+                selectAndStrumChord(info.finalChord);
+              });
+              lineEl.appendChild(badge);
+            } else if (part) {
+              const span = document.createElement('span');
+              span.textContent = part;
+              lineEl.appendChild(span);
+            }
+          });
+        } else {
+          let pendingChordInfo = null;
+          parts.forEach(part => {
+            const m = part.match(/^\[([A-G][#b]?[^\]\s]*)\]$/);
+            if (m) {
+              if (pendingChordInfo) {
+                lineEl.appendChild(createChordLyricPair(pendingChordInfo, '　'));
+              }
+              pendingChordInfo = getPlayedChordShape(m[1]);
+              if (pendingChordInfo.wasSubstituted) subCount++;
+            } else if (part !== '') {
+              lineEl.appendChild(createChordLyricPair(pendingChordInfo, part));
+              pendingChordInfo = null;
+            }
+          });
+          if (pendingChordInfo) {
+            lineEl.appendChild(createChordLyricPair(pendingChordInfo, '　'));
+          }
+        }
+
+        container.appendChild(lineEl);
+      });
+
+      const subSummaryEl = document.getElementById('sheetSubSummary');
+      subSummaryEl.textContent = subCount > 0 ? `已溫和簡化 ${subCount} 處和弦指法` : '';
+    }
+
+    function createChordLyricPair(chordInfo, lyricText) {
+      const wrap = document.createElement('span');
+      wrap.className = 'chord-lyric-pair';
+
+      const chordSpan = document.createElement('span');
+      if (chordInfo) {
+        chordSpan.className = `mono-chord chord-token text-xs ${
+          chordInfo.wasSubstituted
+            ? 'bg-[#6d9b87]/18 text-[#8ab8a4] border border-[#6d9b87]/40 hover:bg-[#6d9b87]/30'
+            : 'bg-[#d4a24c]/14 text-[#e6bc70] border border-[#d4a24c]/30 hover:bg-[#d4a24c]/25'
+        }`;
+        if (chordInfo.wasSubstituted) {
+          chordSpan.innerHTML = `<span>${chordInfo.finalChord}</span><span class="text-[10px] px-1 rounded bg-[#6d9b87]/25 text-[#ece4d6]/90 font-normal">原${chordInfo.rawShape}</span>`;
+        } else {
+          chordSpan.textContent = chordInfo.finalChord;
+        }
+        chordSpan.setAttribute('tabindex', '0');
+        chordSpan.setAttribute('role', 'button');
+        chordSpan.title = '點擊撥弦試聽並檢視指法';
+        chordSpan.addEventListener('click', () => {
+          selectAndStrumChord(chordInfo.finalChord);
+        });
+        chordSpan.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            selectAndStrumChord(chordInfo.finalChord);
+          }
+        });
+      } else {
+        chordSpan.className = 'mono-chord min-h-[1.65em] select-none';
+        chordSpan.innerHTML = '&nbsp;';
+      }
+
+      const lyricSpan = document.createElement('span');
+      lyricSpan.className = 'lyric-token';
+      lyricSpan.textContent = lyricText;
+
+      wrap.appendChild(chordSpan);
+      wrap.appendChild(lyricSpan);
+      return wrap;
+    }
+
+    function renderAll() {
+      const song = getCurrentSong();
+      renderSongSelector();
+      renderSubstitutionRules();
+
+      const rawChords = extractRawChords(song.content);
+      renderCapoSuggestions(rawChords);
+
+      const seen = new Set();
+      const uniqueChordInfos = [];
+      rawChords.forEach(rc => {
+        const info = getPlayedChordShape(rc);
+        if (!seen.has(info.finalChord)) {
+          seen.add(info.finalChord);
+          uniqueChordInfos.push(info);
+        }
+      });
+
+      if (uniqueChordInfos.length > 0 && !seen.has(state.selectedChord)) {
+        state.selectedChord = uniqueChordInfos[0].finalChord;
+      }
+
+      renderSongChordsDeck(uniqueChordInfos);
+      renderInspector();
+      renderChordSheet(song);
+    }
+
+    // =========================================================
+    // 8. 雙行吉他譜自動解析器 (Two-Line to [Chord] Converter)
+    // =========================================================
+    function isChordOnlyLine(line) {
+      const trimmed = line.trim();
+      if (!trimmed) return false;
+      const tokens = trimmed.split(/\s+/);
+      const chordRegex = /^[A-G][#b]?(?:m|maj|min|dim|aug|sus|add|[0-9])*(?:\/[A-G][#b]?)?$/;
+      const validCount = tokens.filter(t => chordRegex.test(t)).length;
+      return validCount > 0 && validCount / tokens.length >= 0.75;
+    }
+
+    function convertTwoLineSheetToBracket(rawText) {
+      const lines = rawText.split('\n');
+      const out = [];
+      let i = 0;
+      while (i < lines.length) {
+        const curr = lines[i];
+        const next = i + 1 < lines.length ? lines[i + 1] : null;
+        if (isChordOnlyLine(curr) && next !== null && !isChordOnlyLine(next) && next.trim() !== '') {
+          const chordMatches = [...curr.matchAll(/(\S+)/g)];
+          let lyric = next;
+          for (let j = chordMatches.length - 1; j >= 0; j--) {
+            const chord = chordMatches[j][1];
+            const pos = Math.min(chordMatches[j].index, lyric.length);
+            lyric = lyric.slice(0, pos) + `[${chord}]` + lyric.slice(pos);
+          }
+          out.push(lyric);
+          i += 2;
+        } else if (isChordOnlyLine(curr)) {
+          const converted = curr.replace(/([A-G][#b]?(?:m|maj|min|dim|aug|sus|add|[0-9])*(?:\/[A-G][#b]?)?)/g, '[$1]');
+          out.push(converted);
+          i += 1;
+        } else {
+          out.push(curr);
+          i += 1;
+        }
+      }
+      return out.join('\n');
+    }
+
+    // =========================================================
+    // 9. 事件綁定與六大琴弦互動掛載
+    // =========================================================
+    function initEvents() {
+      // Requirement 1: Top Header Full-width Guitar String (Hover gentle ripple + Click distinct pluck)
+      const headerArea = document.getElementById('headerStringArea');
+      const headerPath = document.getElementById('headerStringPath');
+      headerPath.setAttribute('data-x2', '1200');
+      let lastHoverTime = 0;
+
+      headerArea.addEventListener('mousemove', () => {
+        const now = performance.now();
+        if (now - lastHoverTime > 180) {
+          lastHoverTime = now;
+          pluck(headerPath, { amplitude: 3.2, frequency: 34, decay: 3.5 });
+        }
+      });
+
+      headerArea.addEventListener('click', () => {
+        pluck(headerPath, { amplitude: 9.5, frequency: 44, decay: 2.2 });
+        const ctx = getAudioCtx();
+        if (ctx) {
+          playPluckedString(ctx, 329.63, ctx.currentTime); // Gentle E4 harmonic note
+        }
+      });
+
+      // Song Selector
+      document.getElementById('selectSong').addEventListener('change', (e) => {
+        state.currentSongId = e.target.value;
+        state.transposeSemitones = 0;
+        state.capoFret = 0;
+        document.getElementById('selectCapo').value = '0';
+        const song = getCurrentSong();
+        state.bpm = song.bpm || 84;
+        document.getElementById('inputBpm').value = state.bpm;
+        renderAll();
+      });
+
+      // Requirement 2 & 5: Transpose Controls + Pitch Bend Animation on Key String
+      const keyBendPath = document.getElementById('keyBendPath');
+      keyBendPath.setAttribute('data-x2', '80');
+
+      const triggerKeyPitchBend = (direction) => {
+        pluck(keyBendPath, {
+          amplitude: 4.8 * direction,
+          frequency: 46,
+          decay: 2.8,
+          bendOffset: -6.5 * direction
+        });
+      };
+
+      document.getElementById('btnTransposeDown').addEventListener('click', (e) => {
+        pluckButtonString(e.currentTarget);
+        state.transposeSemitones -= 1;
+        renderAll();
+        triggerKeyPitchBend(-1);
+      });
+
+      document.getElementById('btnTransposeUp').addEventListener('click', (e) => {
+        pluckButtonString(e.currentTarget);
+        state.transposeSemitones += 1;
+        renderAll();
+        triggerKeyPitchBend(1);
+      });
+
+      document.getElementById('btnResetKey').addEventListener('click', (e) => {
+        pluckButtonString(e.currentTarget);
+        state.transposeSemitones = 0;
+        state.capoFret = 0;
+        document.getElementById('selectCapo').value = '0';
+        renderAll();
+        triggerKeyPitchBend(1);
+        showToast('已還原為原調與 Capo 0');
+      });
+
+      // Notation # vs b
+      const btnSharp = document.getElementById('btnNotationSharp');
+      const btnFlat = document.getElementById('btnNotationFlat');
+      btnSharp.addEventListener('click', () => {
+        state.useFlats = false;
+        btnSharp.className = 'min-h-[30px] px-2.5 py-0.5 rounded-md text-xs mono-chord bg-[#d4a24c] text-[#12100e] font-semibold transition';
+        btnFlat.className = 'min-h-[30px] px-2.5 py-0.5 rounded-md text-xs mono-chord text-[#a69c8e] hover:text-[#ece4d6] transition';
+        renderAll();
+      });
+      btnFlat.addEventListener('click', () => {
+        state.useFlats = true;
+        btnFlat.className = 'min-h-[30px] px-2.5 py-0.5 rounded-md text-xs mono-chord bg-[#d4a24c] text-[#12100e] font-semibold transition';
+        btnSharp.className = 'min-h-[30px] px-2.5 py-0.5 rounded-md text-xs mono-chord text-[#a69c8e] hover:text-[#ece4d6] transition';
+        renderAll();
+      });
+
+      // Capo Select
+      document.getElementById('selectCapo').addEventListener('change', (e) => {
+        state.capoFret = parseInt(e.target.value, 10) || 0;
+        renderAll();
+        triggerKeyPitchBend(1);
+      });
+
+      // Requirement 6: String-Pluck Toggle Switch for Easy Mode
+      const btnEasySwitch = document.getElementById('toggleEasyMode');
+      const switchStringPath = document.getElementById('switchStringPath');
+      const switchKnob = document.getElementById('switchKnob');
+      const easyModeLabel = document.getElementById('easyModeLabel');
+      switchStringPath.setAttribute('data-x2', '40');
+
+      btnEasySwitch.addEventListener('click', () => {
+        state.easyMode = !state.easyMode;
+        btnEasySwitch.setAttribute('aria-checked', String(state.easyMode));
+
+        if (state.easyMode) {
+          switchKnob.setAttribute('cx', '33');
+          switchKnob.setAttribute('fill', '#6d9b87');
+          easyModeLabel.textContent = '已簡化橫按';
+          easyModeLabel.className = 'text-xs font-semibold text-[#8ab8a4] transition-colors';
+        } else {
+          switchKnob.setAttribute('cx', '11');
+          switchKnob.setAttribute('fill', '#a69c8e');
+          easyModeLabel.textContent = '一鍵簡化';
+          easyModeLabel.className = 'text-xs font-medium text-[#a69c8e] transition-colors';
+        }
+
+        // Pluck the switch string toward the toggled side
+        pluck(switchStringPath, {
+          amplitude: state.easyMode ? -5.5 : 5.5,
+          frequency: 50,
+          decay: 2.9,
+          highlightColor: state.easyMode ? '#8ab8a4' : '#e6bc70'
+        });
+
+        renderAll();
+        showToast(state.easyMode ? '已開啟「一鍵簡化大橫按」模式' : '已關閉自動簡化模式');
+      });
+
+      // Add Custom Substitution Rule
+      document.getElementById('btnAddSubRule').addEventListener('click', (e) => {
+        pluckButtonString(e.currentTarget);
+        const fromVal = document.getElementById('inputSubFrom').value.trim();
+        const toVal = document.getElementById('inputSubTo').value.trim();
+        if (!fromVal || !toVal) {
+          showToast('請輸入「原和弦」與「替換目標和弦」');
+          return;
+        }
+        if (!parseChord(fromVal) || !parseChord(toVal)) {
+          showToast('請輸入有效的和弦名稱（例如 F、Bm、Fmaj7）');
+          return;
+        }
+        state.customSubs[fromVal] = toVal;
+        document.getElementById('inputSubFrom').value = '';
+        document.getElementById('inputSubTo').value = '';
+        renderAll();
+        showToast(`已套用自訂替換規則：${fromVal} → ${toVal}`);
+      });
+
+      // Inspector Strum Button & Fretboard Click
+      document.getElementById('btnStrumSelected').addEventListener('click', (e) => {
+        pluckButtonString(e.currentTarget);
+        strumChord(state.selectedChord, true);
+      });
+      document.getElementById('inspectorSvgContainer').addEventListener('click', () => {
+        strumChord(state.selectedChord, true);
+      });
+
+      // Play All Chords in Song sequentially
+      document.getElementById('btnPlayAllChords').addEventListener('click', (e) => {
+        pluckButtonString(e.currentTarget);
+        const song = getCurrentSong();
+        const rawChords = extractRawChords(song.content);
+        const unique = [...new Set(rawChords.map(c => getPlayedChordShape(c).finalChord))];
+        unique.forEach((ch, idx) => {
+          setTimeout(() => {
+            selectAndStrumChord(ch);
+          }, idx * 720);
+        });
+      });
+
+      // Display Mode Switcher
+      const btnOver = document.getElementById('btnModeOver');
+      const btnInline = document.getElementById('btnModeInline');
+      btnOver.addEventListener('click', () => {
+        state.displayMode = 'over';
+        btnOver.className = 'min-h-[34px] px-3 py-1 rounded-md bg-[#d4a24c] text-[#12100e] font-semibold transition';
+        btnInline.className = 'min-h-[34px] px-3 py-1 rounded-md text-[#a69c8e] hover:text-[#ece4d6] transition';
+        renderAll();
+      });
+      btnInline.addEventListener('click', () => {
+        state.displayMode = 'inline';
+        btnInline.className = 'min-h-[34px] px-3 py-1 rounded-md bg-[#d4a24c] text-[#12100e] font-semibold transition';
+        btnOver.className = 'min-h-[34px] px-3 py-1 rounded-md text-[#a69c8e] hover:text-[#ece4d6] transition';
+        renderAll();
+      });
+
+      // Font Size Controls
+      document.getElementById('btnFontDec').addEventListener('click', () => {
+        state.fontSize = Math.max(13, state.fontSize - 2);
+        document.getElementById('labelFontSize').textContent = `${state.fontSize}px`;
+        renderChordSheet(getCurrentSong());
+      });
+      document.getElementById('btnFontInc').addEventListener('click', () => {
+        state.fontSize = Math.min(26, state.fontSize + 2);
+        document.getElementById('labelFontSize').textContent = `${state.fontSize}px`;
+        renderChordSheet(getCurrentSong());
+      });
+
+      // Copy Processed Sheet
+      document.getElementById('btnCopySheet').addEventListener('click', () => {
+        const song = getCurrentSong();
+        const processed = song.content.replace(/\[([A-G][#b]?[^\]\s]*)\]/g, (_, c) => {
+          return `[${getPlayedChordShape(c).finalChord}]`;
+        });
+        const textToCopy = `${song.title} (Capo ${state.capoFret})\n\n${processed}`;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(textToCopy).then(() => {
+            showToast('已複製轉調與簡化後的吉他譜到剪貼簿');
+          }).catch(() => fallbackCopy(textToCopy));
+        } else {
+          fallbackCopy(textToCopy);
+        }
+      });
+
+      // Auto-Scroll
+      document.getElementById('btnAutoScroll').addEventListener('click', () => {
+        state.isAutoScrolling = !state.isAutoScrolling;
+        updateAutoScroll();
+      });
+      document.getElementById('selectScrollSpeed').addEventListener('change', () => {
+        if (state.isAutoScrolling) updateAutoScroll();
+      });
+
+      // Metronome
+      document.getElementById('btnMetronomeToggle').addEventListener('click', () => {
+        state.isMetronomeOn = !state.isMetronomeOn;
+        updateMetronome();
+      });
+      document.getElementById('inputBpm').addEventListener('change', (e) => {
+        state.bpm = Math.max(40, Math.min(220, parseInt(e.target.value, 10) || 84));
+        e.target.value = state.bpm;
+        if (state.isMetronomeOn) updateMetronome();
+      });
+
+      // Modal Editor Open / Close / Save
+      const modal = document.getElementById('modalEditor');
+      const openEditorWithSong = (songObj, isNew) => {
+        document.getElementById('editSongTitle').value = isNew ? '深夜木吉他自訂曲' : songObj.title;
+        document.getElementById('editSongKey').value = isNew ? 'C' : songObj.key;
+        document.getElementById('editSongBpm').value = isNew ? 88 : (songObj.bpm || 88);
+        document.getElementById('editSongContent').value = isNew
+          ? `[C]在這裡貼上或輸入[G]你的歌詞\n[Am]在字的前方加上[Em]中括號和弦\n[F]例如這樣就能[C]自動轉調與[Dm7]換指[G]法`
+          : songObj.content;
+        document.getElementById('btnDeleteCustomSong').style.display = (!isNew && songObj.isCustom) ? 'inline-block' : 'none';
+        modal.classList.remove('hidden');
+      };
+
+      document.getElementById('btnOpenEditor').addEventListener('click', (e) => {
+        pluckButtonString(e.currentTarget);
+        openEditorWithSong(getCurrentSong(), false);
+      });
+      document.getElementById('btnNewSongQuick').addEventListener('click', () => {
+        openEditorWithSong(null, true);
+      });
+      document.getElementById('btnCloseEditor').addEventListener('click', () => {
+        modal.classList.add('hidden');
+      });
+
+      document.getElementById('btnConvertTwoLine').addEventListener('click', () => {
+        const area = document.getElementById('editSongContent');
+        area.value = convertTwoLineSheetToBracket(area.value);
+        showToast('已將雙行和弦譜轉換為 [和弦] 格式');
+      });
+
+      document.getElementById('btnSaveCurrentSong').addEventListener('click', () => {
+        const song = getCurrentSong();
+        song.title = document.getElementById('editSongTitle').value.trim() || '未命名曲目';
+        song.key = document.getElementById('editSongKey').value;
+        song.bpm = parseInt(document.getElementById('editSongBpm').value, 10) || 88;
+        song.content = document.getElementById('editSongContent').value;
+        saveCustomSongsToStorage();
+        modal.classList.add('hidden');
+        renderAll();
+        showToast('已更新並儲存目前曲目譜面');
+      });
+
+      document.getElementById('btnSaveAsNewSong').addEventListener('click', () => {
+        const newId = 'custom-' + Date.now();
+        const newSong = {
+          id: newId,
+          title: document.getElementById('editSongTitle').value.trim() || '自訂曲目',
+          subtitle: '使用者自訂儲存樂譜',
+          key: document.getElementById('editSongKey').value,
+          timeSig: '4/4',
+          bpm: parseInt(document.getElementById('editSongBpm').value, 10) || 88,
+          content: document.getElementById('editSongContent').value,
+          isCustom: true
+        };
+        state.songs.push(newSong);
+        state.currentSongId = newId;
+        saveCustomSongsToStorage();
+        modal.classList.add('hidden');
+        renderAll();
+        showToast('已另存為新歌曲並載入');
+      });
+
+      document.getElementById('btnDeleteCustomSong').addEventListener('click', () => {
+        const song = getCurrentSong();
+        if (!song.isCustom) return;
+        state.songs = state.songs.filter(s => s.id !== song.id);
+        state.currentSongId = state.songs[0].id;
+        saveCustomSongsToStorage();
+        modal.classList.add('hidden');
+        renderAll();
+        showToast('已刪除自訂曲目');
+      });
+    }
+
+    function fallbackCopy(text) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        showToast('已複製轉調後吉他譜到剪貼簿');
+      } catch (e) {
+        showToast('複製失敗，請手動選取複製');
+      }
+      document.body.removeChild(ta);
+    }
+
+    function updateAutoScroll() {
+      clearInterval(state.scrollTimer);
+      const btn = document.getElementById('btnAutoScroll');
+      const text = document.getElementById('scrollText');
+      const icon = document.getElementById('scrollIcon');
+      const container = document.getElementById('sheetScrollContainer');
+
+      if (state.isAutoScrolling) {
+        const speed = parseInt(document.getElementById('selectScrollSpeed').value, 10) || 2;
+        btn.className = 'studio-btn px-3 py-1.5 rounded-md text-xs font-semibold bg-[#d4a24c] text-[#12100e] flex items-center gap-1.5';
+        icon.textContent = '⏸';
+        icon.className = 'text-[#12100e]';
+        text.textContent = '停止捲譜';
+        state.scrollTimer = setInterval(() => {
+          container.scrollTop += 1;
+          if (container.scrollTop + container.clientHeight >= container.scrollHeight - 2) {
+            state.isAutoScrolling = false;
+            updateAutoScroll();
+          }
+        }, Math.max(18, Math.floor(70 / speed)));
+      } else {
+        btn.className = 'studio-btn px-3 py-1.5 rounded-md text-xs font-medium bg-[#221e19] hover:bg-[#2b2620] text-[#ece4d6] border border-[#ece4d6]/10 flex items-center gap-1.5';
+        icon.textContent = '▶';
+        icon.className = 'text-[#d4a24c]';
+        text.textContent = '自動捲譜';
+      }
+    }
+
+    function updateMetronome() {
+      clearInterval(state.metroTimer);
+      const btn = document.getElementById('btnMetronomeToggle');
+      const ind = document.getElementById('metroIndicator');
+      const label = document.getElementById('metroLabel');
+
+      if (state.isMetronomeOn) {
+        btn.className = 'studio-btn px-3 py-1.5 rounded-md text-xs font-semibold bg-[#6d9b87] text-[#12100e] flex items-center gap-2';
+        label.textContent = '停止節拍';
+        let beat = 0;
+        const intervalMs = Math.round((60 / state.bpm) * 1000);
+        const tick = () => {
+          const isDown = (beat % 4) === 0;
+          playMetronomeClick(isDown);
+          ind.className = isDown
+            ? 'w-2.5 h-2.5 rounded-full bg-[#ece4d6] scale-125 transition-all'
+            : 'w-2 h-2 rounded-full bg-[#12100e] transition-all';
+          beat++;
+        };
+        tick();
+        state.metroTimer = setInterval(tick, intervalMs);
+      } else {
+        btn.className = 'studio-btn px-3 py-1.5 rounded-md text-xs font-medium bg-[#221e19] hover:bg-[#2b2620] text-[#ece4d6] border border-[#ece4d6]/10 flex items-center gap-2';
+        ind.className = 'w-2 h-2 rounded-full bg-[#756c60] transition-all';
+        label.textContent = '節拍器';
+      }
+    }
+
+    // Boot Application
+    window.addEventListener('DOMContentLoaded', () => {
+      loadSongsFromStorage();
+      initEvents();
+      renderAll();
+    });
+  </script>
+</body>
+</html>
