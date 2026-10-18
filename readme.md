@@ -3,13 +3,7 @@
 > **Vibe Coding 互動網頁設計作品**  
 > 一款專為吉他初學者與彈唱練習者打造的純前端互動和弦譜工作站。結合十二平均律自由轉調、智慧變調夾（Capo）試算、封閉大橫按一鍵簡化、真實比例 SVG 玫瑰木指板圖、阻尼正弦波琴弦物理動畫與 Web Audio 即時刷弦合成器。
 
-## 一、專案資訊與線上體驗
-
-* **線上公開網站 (GitHub Pages)**：`https://<你的GitHub帳號>.github.io/<你的Repository名稱>/` *(上傳後請替換為實際網址)*
-* **GitHub 原始碼儲存庫**：`https://github.com/<你的GitHub帳號>/<你的Repository名稱>`
-* **部署架構**：單一 `index.html` 檔案（內嵌 HTML5、Tailwind CSS、原生 ES6+ JavaScript、動態 SVG 與 Web Audio API），無須後端伺服器或外部資料庫即可直接運行。
-
-## 二、發想動機與規格收斂過程
+## 一、發想動機與規格收斂過程
 
 ### 1. 痛點觀察
 初學木吉他自彈自唱時，常在練習過程遇到三個核心阻礙：
